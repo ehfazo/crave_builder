@@ -226,18 +226,6 @@ jobs:
         else
           echo "Displaying is disabled through secrets."
         fi
-    
-    - name: Remote add
-      id: remote-add
-      run: |
-        REMOTE_ADD="git init
-        if ! git remote get-url origin &>/dev/null; then
-            git remote remove origin
-            git remote add origin ${{ steps.proj-variables.outputs.REPO_URL }}
-        else
-            git remote set-url origin ${{ steps.proj-variables.outputs.REPO_URL }}
-        fi"
-        echo "REMOTE_ADD=$REMOTE_ADD" >> "$GITHUB_OUTPUT"
 
     outputs:
       PROJECTFOLDER: ${{ steps.proj-variables.outputs.PROJECTFOLDER }}
@@ -246,7 +234,6 @@ jobs:
       LUNCH: ${{ steps.proj-variables.outputs.LUNCH }}
       LOCAL_MANIFEST: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST }}
       REPO_URL: ${{ steps.proj-variables.outputs.REPO_URL }}
-      REMOTE_ADD: ${{ steps.remote-add.outputs.REMOTE_ADD }}
 
   test:
     name: Test Local Manifests
@@ -320,7 +307,6 @@ jobs:
       LUNCH: ${{ needs.prepare.outputs.LUNCH }}
       REMOTE_URL: ${{ needs.prepare.outputs.REPO_URL }}
       LOCAL_MANIFEST: "${{ needs.prepare.outputs.LOCAL_MANIFEST }}"
-      REMOTE_ADD: ${{ needs.prepare.outputs.REMOTE_ADD }}
 
 
   build:
