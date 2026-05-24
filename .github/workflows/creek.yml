@@ -620,9 +620,13 @@ jobs:
         done
 
     - name: Upload to PixelDrain (success)
-      if: ${{ success() && secrets.PIXELDRAIN_TOKEN != '' }}
+      if: ${{ success() }}
       continue-on-error: true
       run: |
+        if [[ -z "${{ secrets.PIXELDRAIN_TOKEN }}" ]]; then
+          echo "PixelDrain token not configured, skipping."
+          exit 0
+        fi
         for FILE in artifacts/*.zip artifacts/*.img; do
           [ -f "$FILE" ] || continue
           echo "Uploading $FILE to PixelDrain..."
@@ -689,9 +693,13 @@ jobs:
         done
 
     - name: Upload error log to PixelDrain
-      if: ${{ failure() && secrets.PIXELDRAIN_TOKEN != '' }}
+      if: ${{ failure() }}
       continue-on-error: true
       run: |
+        if [[ -z "${{ secrets.PIXELDRAIN_TOKEN }}" ]]; then
+          echo "PixelDrain token not configured, skipping."
+          exit 0
+        fi
         if [ ! -f error.log ]; then
           echo "No error.log found"
           exit 0
