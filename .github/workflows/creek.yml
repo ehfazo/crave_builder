@@ -61,8 +61,8 @@ on:
       LOCAL_MANIFEST_BRANCH:
         description: "Personal local manifest's branch:"
         required: false
-        default: 'lineage-23.2'
-
+        default: 'main'
+ 
       # OTHER VARIABLES
       REPO_INIT_URL:
         description: "Command to initialize 'repo' project:"
