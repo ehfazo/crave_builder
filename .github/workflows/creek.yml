@@ -230,13 +230,14 @@ jobs:
     - name: Remote add
       id: remote-add
       run: |
-        echo "REMOTE_ADD= git init
-if ! git remote get-url origin &>/dev/null; then
-    git remote remove origin
-    git remote add origin ${{ steps.proj-variables.outputs.REPO_URL }}
-else
-    git remote set-url origin ${{ steps.proj-variables.outputs.REPO_URL }}
-fi" >> "$GITHUB_OUTPUT"
+        REMOTE_ADD="git init
+        if ! git remote get-url origin &>/dev/null; then
+            git remote remove origin
+            git remote add origin ${{ steps.proj-variables.outputs.REPO_URL }}
+        else
+            git remote set-url origin ${{ steps.proj-variables.outputs.REPO_URL }}
+        fi"
+        echo "REMOTE_ADD=$REMOTE_ADD" >> "$GITHUB_OUTPUT"
 
     outputs:
       PROJECTFOLDER: ${{ steps.proj-variables.outputs.PROJECTFOLDER }}
