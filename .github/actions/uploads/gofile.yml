@@ -1,0 +1,44 @@
+name: 'GoFile Upload'
+description: 'Uploads a file to GoFile.io'
+inputs:
+  filepath:
+    description: 'Path to the file to upload'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        FILE="${{ inputs.filepath }}"
+        if [ ! -f "$FILE" ]; then
+          echo "Error: File $FILE not found!"
+          exit 1
+        fi
+        
+        # Fetch servers from GoFile API
+        mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
+        
+        if [ ${#SERVERS[@]} -eq 0 ]; then
+          echo "Error: No GoFile servers available."
+          exit 1
+        fi
+
+        SUCCESS=false
+        # Try random servers until one works
+        for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
+            echo "Trying server: $S"
+            RESP=$(curl -s -F "file=@${FILE}" "https://${S}.gofile.io/uploadFile")
+            LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+
+            if [ -n "$LINK" ]; then
+                echo "Upload successful: $LINK"
+                echo "DOWNLOAD_URL=$LINK" >> $GITHUB_ENV
+                SUCCESS=true
+                break
+            fi
+        done
+
+        if [ "$SUCCESS" = false ]; then
+            echo "Error: Failed to upload file to any GoFile server."
+            exit 1
+        fi
