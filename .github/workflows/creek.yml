@@ -375,6 +375,22 @@ jobs:
         cd ${{ github.event.inputs.DEVICE }}
       continue-on-error: true
 
+      # Initialize git remote in the device directory
+    - name: Remote add
+      id: remote-add
+      run: |
+        cd ${{ github.event.inputs.DEVICE }}
+        EOF=$(dd if=/dev/urandom bs=1 count=8 2>/dev/null | od -An -tx1 | tr -d ' \n')
+        echo "REMOTE_ADD<<$EOF" >> "$GITHUB_OUTPUT"
+        echo "git init" >> "$GITHUB_OUTPUT"
+        echo "if ! git remote get-url origin &>/dev/null; then" >> "$GITHUB_OUTPUT"
+        echo "    git remote remove origin" >> "$GITHUB_OUTPUT"
+        echo "    git remote add origin ${{ needs.test.outputs.REMOTE_URL }}" >> "$GITHUB_OUTPUT"
+        echo "else" >> "$GITHUB_OUTPUT"
+        echo "    git remote set-url origin ${{ needs.test.outputs.REMOTE_URL }}" >> "$GITHUB_OUTPUT"
+        echo "fi" >> "$GITHUB_OUTPUT"
+        echo "$EOF" >> "$GITHUB_OUTPUT"
+
       # Download and configure 'repo'.
     - name: Configure the 'repo' environment
       run: |
