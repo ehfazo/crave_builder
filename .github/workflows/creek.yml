@@ -57,12 +57,12 @@ on:
       LOCAL_MANIFEST:
         description: "Personal local manifest [repository or raw]:"
         required: true
-        default: 'https://github.com/ehfazo/local_manifest_creek.git'
+        default: 'https://github.com/ehfazo/local_manifest.git'
       LOCAL_MANIFEST_BRANCH:
         description: "Personal local manifest's branch:"
         required: false
-        default: 'main'
- 
+        default: 'lineage-23.2'
+
       # OTHER VARIABLES
       REPO_INIT_URL:
         description: "Command to initialize 'repo' project:"
