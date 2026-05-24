@@ -1,0 +1,26 @@
+name: 'Telegram Send'
+description: 'Sends a message via Telegram bot'
+inputs:
+  message:
+    description: 'Message text to send (Markdown)'
+    required: true
+  tg_token:
+    description: 'Telegram bot token'
+    required: true
+  tg_chat:
+    description: 'Telegram chat ID'
+    required: true
+  parse_mode:
+    description: 'Parse mode (Markdown, HTML, etc.)'
+    required: false
+    default: 'Markdown'
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        curl -s -X POST "https://api.telegram.org/bot${{ inputs.tg_token }}/sendMessage" \
+          --data-urlencode "chat_id=${{ inputs.tg_chat }}" \
+          --data-urlencode "parse_mode=${{ inputs.parse_mode }}" \
+          --data-urlencode "disable_web_page_preview=true" \
+          --data-urlencode "text=${{ inputs.message }}" >/dev/null
