@@ -374,11 +374,11 @@ jobs:
         cd ${{ github.event.inputs.DEVICE }}
       continue-on-error: true
 
-      # Initialize git remote in the device directory
+      # Initialize git remote in the project folder (where repo init & build proceed)
     - name: Remote add
       id: remote-add
       run: |
-        cd ${{ github.event.inputs.DEVICE }}
+        cd $PROJECTFOLDER
         EOF=$(dd if=/dev/urandom bs=1 count=8 2>/dev/null | od -An -tx1 | tr -d ' \n')
         echo "REMOTE_ADD<<$EOF" >> "$GITHUB_OUTPUT"
         echo "git init" >> "$GITHUB_OUTPUT"
