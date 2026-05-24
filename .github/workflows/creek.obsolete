@@ -48,7 +48,11 @@ on:
         - 'eng'
         - 'userdebug'
         - 'user' 
-    
+      BUILD_DIFFERENT_ROM:
+        description: "Command to initialize a different 'repo' project:"
+        required: false
+        default: "echo 'Build Starting!'"
+     
       # LOCAL MANIFEST VARIABLES
       LOCAL_MANIFEST:
         description: "Personal local manifest [repository or raw]:"
@@ -68,9 +72,10 @@ on:
         description: "Branch to initialize 'repo' with:"
         required: true
         default: "lineage-23.2"
-      REMOVALS:
-        description: "Folders to be removed before syncing:"
-        required: false
+      BUILD_COMMAND:
+        description: 'Command to be used for compiling:'
+        required: true
+        default: 'mka bacon'
       CLEAN_BUILD:
         description: 'Build with a clean workspace?'
         required: true
@@ -180,11 +185,7 @@ jobs:
 
         echo "REPO_URL=$REPO_URL" >> "$GITHUB_OUTPUT"
 
-        if [[ "${{ github.event.inputs.PRODUCT_NAME }}" == "creek" ]]; then
-          LUNCH="lunch ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}"
-        else
-          echo "Only creek device supports custom product names for now! Welcome to contribute if you want to see this feature expanded!"
-        fi
+        LUNCH="lunch ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}"
 
 
 
@@ -211,7 +212,6 @@ jobs:
         echo "::group::User Environment Variables"
         echo "Base Project: ${{ github.event.inputs.BASE_PROJECT }}"
         echo "Repo Init: ${{ steps.repo-init.outputs.REPO_INIT }}"
-        echo "Removals: ${{ github.event.inputs.REMOVALS }}"
         echo "Local Manifest: ${{ github.event.inputs.LOCAL_MANIFEST }}"
         echo "Local Manifest Branch: ${{ github.event.inputs.LOCAL_MANIFEST_BRANCH }}"
         echo "Device Name: ${{ github.event.inputs.DEVICE }}"
@@ -229,7 +229,8 @@ jobs:
     
     - name: Remote add
       id: remote-add
-      echo "REMOTE_ADD= git init
+      run: |
+        echo "REMOTE_ADD= git init
 if ! git remote get-url origin &>/dev/null; then
     git remote remove origin
     git remote add origin ${{ steps.proj-variables.outputs.REPO_URL }}
@@ -414,24 +415,22 @@ fi" >> "$GITHUB_OUTPUT"
         git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
       # Send Build 'start' notification
-    - name: Telegram Notification
+    - name: Telegram Build Started
       continue-on-error: true
       run: |
-        send_telegram_message() {
-          local message="$1"
-          curl -s -X POST \
-          https://api.telegram.org/bot$botToken/sendMessage \
-          -d chat_id=$chatId \
-          -d text="$message" \
-          -d parse_mode="Markdown"
-        }
-
-        send_telegram_message "Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0ACrave ProjectID: $PROJECTID %0ABuild for ${{ github.event.inputs.DEVICE }} has been queued %0ACheck Progress at: %0Ahttps://github.com/$(echo "${{ github.repository }}" | sed 's@_@\\_@g')/actions/runs/${{ github.run_id }}"
-      env:
-        chatId: ${{ secrets.TELEGRAM_TO }}
-        botToken: ${{ secrets.TELEGRAM_TOKEN }}
-        jobStatus: "Build Started"
-        skipSuccess: false
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+          echo "Telegram credentials not configured, skipping notification."
+          exit 0
+        fi
+        MESSAGE="Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="Build has been queued%0A"
+        MESSAGE+="Check Progress at:%0A"
+        MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "text=$MESSAGE" \
+          -d "parse_mode=Markdown" >/dev/null
 
       # Download and configure 'crave'.
     - name: Configure the 'crave' environment
@@ -497,7 +496,21 @@ fi" >> "$GITHUB_OUTPUT"
         echo "Running build's log will show up here!"
 
 
-        crave ${{ secrets.CRAVE_FLAGS }} run --no-patch ${PAID} ${CLEAN} -- "rm -rf .repo/local_manifests/ ${{ github.event.inputs.REMOVALS }} && \
+        crave ${{ secrets.CRAVE_FLAGS }} run --no-patch ${PAID} ${CLEAN} -- "
+        echo '>>>> [STEP] Clean'
+        remove=(
+          .repo/local_manifests
+          hardware/qcom-caf/common
+          hardware/qcom-caf/sm6225/*
+          device/xiaomi/*
+          vendor/xiaomi/*
+          vendor/lineage-priv/keys
+          vendor/qcom/opensource/*
+        )
+        for folder in \"\${remove[@]}\"; do
+          rm -rf \"\$folder\"
+          echo \"    Cleaned: \$folder\"
+        done && \
         # Clone local_manifests repository
         $BUILD_DIFFERENT_ROM ; \
         $LOCAL_MANIFEST && \
@@ -523,53 +536,47 @@ fi" >> "$GITHUB_OUTPUT"
         ${{ github.event.inputs.BUILD_COMMAND }}"
 
       # Send Build 'status' notification (Success)
-    - name: Telegram Notification
+    - name: Telegram Build Succeeded
       if:  ${{ success() }}
       continue-on-error: true
       run: |
-        send_telegram_message() {
-          local message="$1"
-          curl -s -X POST \
-          https://api.telegram.org/bot$botToken/sendMessage \
-          -d chat_id=$chatId \
-          -d text="$message" \
-          -d parse_mode="Markdown"
-        }
-
-        send_telegram_message "Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0ACrave ProjectID: $PROJECTID %0ABuild for ${{ github.event.inputs.DEVICE }} has Succeeded! %0ACheck Progress at: %0Ahttps://github.com/$(echo "${{ github.repository }}" | sed 's@_@\\_@g')/actions/runs/${{ github.run_id }}%0ADownload at: https://github.com/$(echo "${{ github.repository }}" | sed 's@_@\\_@g')/releases/tag/${{ github.run_id }}"
-
-      env:
-        chatId: ${{ secrets.TELEGRAM_TO }}
-        botToken: ${{ secrets.TELEGRAM_TOKEN }}
-        jobStatus: ${{ job.status }}
-        skipSuccess: false
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+          echo "Telegram credentials not configured, skipping notification."
+          exit 0
+        fi
+        MESSAGE="Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="Build has Succeeded!%0A"
+        MESSAGE+="Download at:%0A"
+        MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}"
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "text=$MESSAGE" \
+          -d "parse_mode=Markdown" >/dev/null
 
       # Send Build 'status' notification (Fail/Cancel)
-    - name: Telegram Notification
+    - name: Telegram Build Failed
       if:  ${{ cancelled() || failure() }}
       continue-on-error: true
       run: |
-        send_telegram_message() {
-          local message="$1"
-          curl -s -X POST \
-          https://api.telegram.org/bot$botToken/sendMessage \
-          -d chat_id=$chatId \
-          -d text="$message" \
-          -d parse_mode="Markdown"
-        }
-
-        if [ "$jobStatus" = "cancelled" ]; then
-          jobMessage="has been Cancelled!"
-        elif [ "$jobStatus" = "failure" ]; then
-          jobMessage="has Failed!"
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+          echo "Telegram credentials not configured, skipping notification."
+          exit 0
         fi
-
-        send_telegram_message "Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0ACrave ProjectID: $PROJECTID %0ABuild for ${{ github.event.inputs.DEVICE }} $jobMessage %0ACheck Progress at: %0Ahttps://github.com/$(echo "${{ github.repository }}" | sed 's@_@\\_@g')/actions/runs/${{ github.run_id }}"
-        # Todo: error.log link
-      env:
-        chatId: ${{ secrets.TELEGRAM_TO }}
-        botToken: ${{ secrets.TELEGRAM_TOKEN }}
-        jobStatus: ${{ job.status }}
+        if [[ "${{ job.status }}" == "cancelled" ]]; then
+          JOB_MSG="has been Cancelled!"
+        else
+          JOB_MSG="has Failed!"
+        fi
+        MESSAGE="Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="Build $JOB_MSG%0A"
+        MESSAGE+="Check logs at:%0A"
+        MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "text=$MESSAGE" \
+          -d "parse_mode=Markdown" >/dev/null
 
       # Only reach this wheter the user killed the workflow.
     - name: Execute if the job is cancelled
@@ -578,13 +585,76 @@ fi" >> "$GITHUB_OUTPUT"
         cd $PROJECTFOLDER
         crave stop --all
 
-      # Upload '.zip's and '.img's directly from 'crave' ssh.
-    - name: Upload build artifact(s)
+      # Upload build artifacts to GitHub Releases + GoFile + PixelDrain
+    - name: Upload build artifacts
+      if: ${{ success() }}
       run: |
         cd $PROJECTFOLDER
         echo "${{ secrets.GITHUB_TOKEN }}" > token.txt
         crave push token.txt -d $(crave ssh -- pwd | grep -v Select | sed -s 's/\r//g')/
         crave ssh -- "export GH_UPLOAD_LIMIT="${{ secrets.GH_UPLOAD_LIMIT }}"; bash /opt/crave/github-actions/upload.sh '${{ github.run_id }}' '${{ github.event.inputs.DEVICE }}'  '${{ github.repository }}' '${{ github.event.inputs.PRODUCT_NAME }}-${{ github.run_id }}' '${{ secrets.EXTRA_FILES }}'"
+
+        # Pull built files for GoFile/PixelDrain upload
+        mkdir -p artifacts
+        crave pull "out/target/product/${{ github.event.inputs.DEVICE }}/*.zip" artifacts/ || true
+        crave pull "out/target/product/${{ github.event.inputs.DEVICE }}/*.img" artifacts/ || true
+
+    - name: Upload to GoFile (success)
+      if: ${{ success() }}
+      continue-on-error: true
+      run: |
+        for FILE in artifacts/*.zip artifacts/*.img; do
+          [ -f "$FILE" ] || continue
+          echo "Uploading $FILE to GoFile..."
+          mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
+          for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
+            RESP=$(curl -s -F "file=@${FILE}" "https://${S}.gofile.io/uploadFile")
+            LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+            if [ -n "$LINK" ]; then
+              echo "GoFile upload successful: $LINK"
+              echo "GOFILE_URL=$LINK" >> $GITHUB_ENV
+              break
+            fi
+          done
+        done
+
+    - name: Upload to PixelDrain (success)
+      if: ${{ success() && secrets.PIXELDRAIN_TOKEN != '' }}
+      continue-on-error: true
+      run: |
+        for FILE in artifacts/*.zip artifacts/*.img; do
+          [ -f "$FILE" ] || continue
+          echo "Uploading $FILE to PixelDrain..."
+          RESPONSE=$(curl -s -u ":${{ secrets.PIXELDRAIN_TOKEN }}" -F "file=@$FILE" https://pixeldrain.com/api/file)
+          FILE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          if [[ "$FILE_ID" != "null" && -n "$FILE_ID" ]]; then
+            URL="https://pixeldrain.com/u/$FILE_ID"
+            echo "PixelDrain upload successful: $URL"
+            echo "PIXELDRAIN_URL=$URL" >> $GITHUB_ENV
+          else
+            echo "PixelDrain upload failed: $RESPONSE"
+          fi
+        done
+
+    - name: Telegram Upload Links
+      if: ${{ success() }}
+      continue-on-error: true
+      run: |
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+          exit 0
+        fi
+        MESSAGE="Build artifacts for ${{ github.event.inputs.DEVICE }}:%0A"
+        MESSAGE+="GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}%0A"
+        if [[ -n "${{ env.GOFILE_URL }}" ]]; then
+          MESSAGE+="GoFile: ${{ env.GOFILE_URL }}%0A"
+        fi
+        if [[ -n "${{ env.PIXELDRAIN_URL }}" ]]; then
+          MESSAGE+="PixelDrain: ${{ env.PIXELDRAIN_URL }}"
+        fi
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "text=$MESSAGE" \
+          -d "parse_mode=Markdown" >/dev/null
 
       # Pull Errors and Display them
     - name: Display error.log
@@ -593,7 +663,65 @@ fi" >> "$GITHUB_OUTPUT"
       run: |
         cd $PROJECTFOLDER
         crave ssh -- sleep 1
-        crave pull out/error.log
+        crave pull out/error.log . || true
         echo "Displaying out/error.log"
         cat out/error.log
-        #if [[ -z "${{ secrets.CUSTOM_YAML }}" ]]; then
+
+    - name: Upload error log to GoFile
+      if: ${{ failure() }}
+      continue-on-error: true
+      run: |
+        if [ ! -f error.log ]; then
+          echo "No error.log found"
+          exit 0
+        fi
+        echo "Uploading error.log to GoFile..."
+        mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
+        for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
+          RESP=$(curl -s -F "file=@error.log" "https://${S}.gofile.io/uploadFile")
+          LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+          if [ -n "$LINK" ]; then
+            echo "GoFile error log: $LINK"
+            echo "GOFILE_ERROR_URL=$LINK" >> $GITHUB_ENV
+            break
+          fi
+        done
+
+    - name: Upload error log to PixelDrain
+      if: ${{ failure() && secrets.PIXELDRAIN_TOKEN != '' }}
+      continue-on-error: true
+      run: |
+        if [ ! -f error.log ]; then
+          echo "No error.log found"
+          exit 0
+        fi
+        echo "Uploading error.log to PixelDrain..."
+        RESPONSE=$(curl -s -u ":${{ secrets.PIXELDRAIN_TOKEN }}" -F "file=@error.log" https://pixeldrain.com/api/file)
+        FILE_ID=$(echo "$RESPONSE" | jq -r '.id')
+        if [[ "$FILE_ID" != "null" && -n "$FILE_ID" ]]; then
+          URL="https://pixeldrain.com/u/$FILE_ID"
+          echo "PixelDrain error log: $URL"
+          echo "PIXELDRAIN_ERROR_URL=$URL" >> $GITHUB_ENV
+        else
+          echo "PixelDrain upload failed: $RESPONSE"
+        fi
+
+    - name: Telegram Error Links
+      if: ${{ failure() }}
+      continue-on-error: true
+      run: |
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+          exit 0
+        fi
+        MESSAGE="Build for ${{ github.event.inputs.DEVICE }} FAILED%0A"
+        MESSAGE+="Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
+        if [[ -n "${{ env.GOFILE_ERROR_URL }}" ]]; then
+          MESSAGE+="Error log (GoFile): ${{ env.GOFILE_ERROR_URL }}%0A"
+        fi
+        if [[ -n "${{ env.PIXELDRAIN_ERROR_URL }}" ]]; then
+          MESSAGE+="Error log (PixelDrain): ${{ env.PIXELDRAIN_ERROR_URL }}"
+        fi
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "text=$MESSAGE" \
+          -d "parse_mode=Markdown" >/dev/null
