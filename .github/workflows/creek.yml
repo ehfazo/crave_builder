@@ -687,24 +687,25 @@ jobs:
       if: ${{ failure() }}
       id: errorlog
       run: |
-        cd $PROJECTFOLDER
+        cd "$PROJECTFOLDER"
         crave ssh -- sleep 1
-        crave pull out/error.log . || true
-        echo "Displaying out/error.log"
-        cat out/error.log
+        crave pull "out/error.log" "$GITHUB_WORKSPACE/error.log" || true
+        echo "Displaying error.log"
+        cat "$GITHUB_WORKSPACE/error.log" 2>/dev/null || echo "(error.log not found)"
 
     - name: Upload error log to GoFile
       if: ${{ failure() }}
       continue-on-error: true
       run: |
-        if [ ! -f error.log ]; then
+        LOG="$GITHUB_WORKSPACE/error.log"
+        if [ ! -f "$LOG" ]; then
           echo "No error.log found"
           exit 0
         fi
         echo "Uploading error.log to GoFile..."
         mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
         for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
-          RESP=$(curl -s -F "file=@error.log" "https://${S}.gofile.io/uploadFile")
+          RESP=$(curl -s -F "file=@$LOG" "https://${S}.gofile.io/uploadFile")
           LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
           if [ -n "$LINK" ]; then
             echo "GoFile error log: $LINK"
@@ -717,16 +718,17 @@ jobs:
       if: ${{ failure() }}
       continue-on-error: true
       run: |
+        LOG="$GITHUB_WORKSPACE/error.log"
         if [[ -z "${{ secrets.PIXELDRAIN_TOKEN }}" ]]; then
           echo "PixelDrain token not configured, skipping."
           exit 0
         fi
-        if [ ! -f error.log ]; then
+        if [ ! -f "$LOG" ]; then
           echo "No error.log found"
           exit 0
         fi
         echo "Uploading error.log to PixelDrain..."
-        RESPONSE=$(curl -s -u ":${{ secrets.PIXELDRAIN_TOKEN }}" -F "file=@error.log" https://pixeldrain.com/api/file)
+        RESPONSE=$(curl -s -u ":${{ secrets.PIXELDRAIN_TOKEN }}" -F "file=@$LOG" https://pixeldrain.com/api/file)
         FILE_ID=$(echo "$RESPONSE" | jq -r '.id')
         if [[ "$FILE_ID" != "null" && -n "$FILE_ID" ]]; then
           URL="https://pixeldrain.com/u/$FILE_ID"
