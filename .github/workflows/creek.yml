@@ -485,6 +485,7 @@ jobs:
 
       # Initialize the previously chosen 'repo' project.
     - name: Set the 'crave' project
+      if: ${{ github.event.inputs.SKIP_REPO_INIT != 'yes' }}
       run: |
         cd "$PROJECTFOLDER"
         repo init -u "$REPO_INIT_URL" -b "$REPO_INIT_BRANCH" --depth=1
