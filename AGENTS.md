@@ -1,0 +1,5 @@
+- This repo is primarily driven by GitHub Actions; the main workflow is `.github/workflows/creek.yml` (workflow_dispatch) and is the real entrypoint for builds.
+- Required secrets for the main workflow are enforced in `creek.yml` (CRAVE_USERNAME/CRAVE_TOKEN; optional TG_TOKEN/TG_CHAT and PIXELDRAIN_TOKEN). Skips or failures often trace back to missing secrets.
+- Local manifest fetch logic is shared via `scripts/fetch-local-manifest.sh` for the prepare/test jobs; the build job still runs its own inline fetch inside the remote `crave run` block.
+- The weekly script refresh is automated by `.github/workflows/update.yml` and opens a PR; don’t edit `scripts/get_crave.sh` without considering the scheduled updater.
+- The self‑hosted runner bootstrap is in `.github/workflows/configure-runner.yml` and expects a runner registration token (not a PAT).
