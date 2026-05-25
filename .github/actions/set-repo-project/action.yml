@@ -1,0 +1,35 @@
+name: 'Set Repo Project Vars'
+description: 'Export shared repo/build variables to GITHUB_ENV'
+inputs:
+  projectfolder:
+    required: true
+  projectid:
+    required: true
+  repo_init_url:
+    required: true
+  repo_init_branch:
+    required: true
+  lunch:
+    required: true
+  lunch_target:
+    required: true
+  local_manifest_url:
+    required: true
+  local_manifest_branch:
+    required: true
+  local_manifest_is_xml:
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        echo "PROJECTFOLDER=${{ inputs.projectfolder }}" >> "$GITHUB_ENV"
+        echo "PROJECTID=${{ inputs.projectid }}" >> "$GITHUB_ENV"
+        echo "REPO_INIT_URL=${{ inputs.repo_init_url }}" >> "$GITHUB_ENV"
+        echo "REPO_INIT_BRANCH=${{ inputs.repo_init_branch }}" >> "$GITHUB_ENV"
+        echo "LUNCH=${{ inputs.lunch }}" >> "$GITHUB_ENV"
+        echo "LUNCH_TARGET=${{ inputs.lunch_target }}" >> "$GITHUB_ENV"
+        echo "LOCAL_MANIFEST_URL=${{ inputs.local_manifest_url }}" >> "$GITHUB_ENV"
+        echo "LOCAL_MANIFEST_BRANCH=${{ inputs.local_manifest_branch }}" >> "$GITHUB_ENV"
+        echo "LOCAL_MANIFEST_IS_XML=${{ inputs.local_manifest_is_xml }}" >> "$GITHUB_ENV"
