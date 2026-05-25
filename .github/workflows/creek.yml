@@ -117,9 +117,19 @@ jobs:
     - name: Export Repo Initialization Command
       id: repo-init
       run: |
-        echo "REPO_INIT=repo init -u ${{ github.event.inputs.REPO_INIT_URL }} -b ${{ github.event.inputs.REPO_INIT_BRANCH }} --depth=1" >> "$GITHUB_OUTPUT"
-        export REPO_INIT="repo init -u ${{ github.event.inputs.REPO_INIT_URL }} -b ${{ github.event.inputs.REPO_INIT_BRANCH }} --depth=1"
-        echo "REPO_INIT=$REPO_INIT" >> "$GITHUB_ENV"
+        REPO_INIT_URL="${{ github.event.inputs.REPO_INIT_URL }}"
+        REPO_INIT_BRANCH="${{ github.event.inputs.REPO_INIT_BRANCH }}"
+        if [[ ! "$REPO_INIT_URL" =~ ^https://[-a-zA-Z0-9._~:/?#@!$&+,\;%=/]+$ ]]; then
+          echo "Error: Invalid REPO_INIT_URL (must be https URL)"
+          exit 1
+        fi
+        if [[ ! "$REPO_INIT_BRANCH" =~ ^[-a-zA-Z0-9._/]+$ ]]; then
+          echo "Error: Invalid REPO_INIT_BRANCH"
+          exit 1
+        fi
+        CMD="repo init -u ${REPO_INIT_URL} -b ${REPO_INIT_BRANCH} --depth=1"
+        echo "REPO_INIT=$CMD" >> "$GITHUB_OUTPUT"
+        echo "REPO_INIT=$CMD" >> "$GITHUB_ENV"
 
     - name: Set Project variables
       id: proj-variables
