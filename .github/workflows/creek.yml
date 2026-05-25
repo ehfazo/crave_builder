@@ -367,7 +367,7 @@ jobs:
         cd tester 
         repo init -u "$REPO_INIT_URL" -b "$REPO_INIT_BRANCH" --depth=1
 
-        bash scripts/fetch-local-manifest.sh \
+        bash "$GITHUB_WORKSPACE/scripts/fetch-local-manifest.sh" \
           "${{ needs.prepare.outputs.LOCAL_MANIFEST_IS_XML }}" \
           "${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}" \
           "${{ needs.prepare.outputs.LOCAL_MANIFEST_BRANCH }}"
