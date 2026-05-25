@@ -313,9 +313,10 @@ jobs:
         MESSAGE+="⚙️  Command  : ${{ github.event.inputs.BUILD_COMMAND }}%0A"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
         MESSAGE+="⏳ Waiting for build slot...%0A"
-        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        MESSAGE+="🔗 <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">View Run</a>"
         RESP=$(curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "parse_mode=HTML" \
           -d "text=$MESSAGE")
         MSG_ID=$(echo "$RESP" | jq -r '.result.message_id' 2>/dev/null || echo "")
         echo "msg_id=$MSG_ID" >> $GITHUB_OUTPUT
@@ -534,10 +535,11 @@ jobs:
         MESSAGE+="🛠 Environment ready ✓%0A"
         MESSAGE+="🔥 Building...%0A"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        MESSAGE+="🔗 <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">View Run</a>"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/editMessageText" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
           -d "message_id=$MSG_ID" \
+          -d "parse_mode=HTML" \
           -d "text=$MESSAGE" >/dev/null
 
       # Create a 'crave' job for building.
@@ -761,19 +763,18 @@ jobs:
           MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
           MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
           MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-          MESSAGE+="💾 GitHub:%0A"
-          MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}%0A"
+          MESSAGE+="💾 <a href=\"https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}\">GitHub Release</a>%0A"
           if [[ -n "${{ env.GOFILE_URL }}" ]]; then
-            MESSAGE+="☁️ GoFile:%0A${{ env.GOFILE_URL }}%0A"
+            MESSAGE+="☁️ <a href=\"${{ env.GOFILE_URL }}\">GoFile</a>%0A"
           fi
           if [[ -n "${{ env.PIXELDRAIN_URL }}" ]]; then
-            MESSAGE+="☁️ PixelDrain:%0A${{ env.PIXELDRAIN_URL }}%0A"
+            MESSAGE+="☁️ <a href=\"${{ env.PIXELDRAIN_URL }}\">PixelDrain</a>%0A"
           fi
           if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
-            MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
+            MESSAGE+="📋 <a href=\"${{ env.GOFILE_BUILD_LOG }}\">Build Log (GoFile)</a>%0A"
           fi
           if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
-            MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}"
+            MESSAGE+="📋 <a href=\"${{ env.PIXELDRAIN_BUILD_LOG }}\">Build Log (PixelDrain)</a>"
           fi
         else
           if [[ "${{ job.status }}" == "cancelled" ]]; then
@@ -787,22 +788,22 @@ jobs:
           MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
           MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
           MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-          MESSAGE+="📋 Full Log:%0A"
-          MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
+          MESSAGE+="📋 <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Full Log</a>%0A"
           if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
-            MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
+            MESSAGE+="📋 <a href=\"${{ env.GOFILE_BUILD_LOG }}\">Build Log (GoFile)</a>%0A"
           fi
           if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
-            MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}%0A"
+            MESSAGE+="📋 <a href=\"${{ env.PIXELDRAIN_BUILD_LOG }}\">Build Log (PixelDrain)</a>%0A"
           fi
           if [[ -n "${{ env.GOFILE_ERROR_URL }}" ]]; then
-            MESSAGE+="⚠️ Error Log (GoFile):%0A${{ env.GOFILE_ERROR_URL }}%0A"
+            MESSAGE+="⚠️ <a href=\"${{ env.GOFILE_ERROR_URL }}\">Error Log (GoFile)</a>%0A"
           fi
           if [[ -n "${{ env.PIXELDRAIN_ERROR_URL }}" ]]; then
-            MESSAGE+="⚠️ Error Log (PixelDrain):%0A${{ env.PIXELDRAIN_ERROR_URL }}"
+            MESSAGE+="⚠️ <a href=\"${{ env.PIXELDRAIN_ERROR_URL }}\">Error Log (PixelDrain)</a>"
           fi
         fi
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/editMessageText" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
           -d "message_id=$MSG_ID" \
+          -d "parse_mode=HTML" \
           -d "text=$MESSAGE" >/dev/null
