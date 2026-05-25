@@ -522,6 +522,15 @@ jobs:
         echo "Running build's log will show up here!"
 
 
+        CRAVE_FLAGS_RAW="${{ secrets.CRAVE_FLAGS }}"
+        if [[ -n "$CRAVE_FLAGS_RAW" ]]; then
+          if [[ ! "$CRAVE_FLAGS_RAW" =~ ^[a-zA-Z0-9_./:=\ -]+$ ]]; then
+            echo "Error: CRAVE_FLAGS contains invalid characters"
+            exit 1
+          fi
+        fi
+        read -r -a CRAVE_FLAGS_ARR <<< "$CRAVE_FLAGS_RAW"
+
         PAID_ARGS=()
         CLEAN_ARGS=()
         if [[ -n "$PAID" ]]; then
@@ -530,48 +539,14 @@ jobs:
         if [[ -n "$CLEAN" ]]; then
           CLEAN_ARGS=("$CLEAN")
         fi
-        crave ${{ secrets.CRAVE_FLAGS }} run --no-patch "${PAID_ARGS[@]}" "${CLEAN_ARGS[@]}" -- "
-        echo '>>>> [STEP] Clean'
-        remove=(
-          .repo/local_manifests
-          hardware/qcom-caf/common
-          hardware/qcom-caf/sm6225/*
-          device/xiaomi/*
-          vendor/xiaomi/*
-          vendor/lineage-priv/keys
-          vendor/qcom/opensource/*
-        )
-        for folder in \"\${remove[@]}\"; do
-          rm -rf \"\$folder\"
-          echo \"    Cleaned: \$folder\"
-        done && \
-        # Clone local_manifests repository
-        repo init -u \"$REPO_INIT_URL\" -b \"$REPO_INIT_BRANCH\" --depth=1 ; \
-        if [[ \"$LOCAL_MANIFEST_IS_XML\" == \"true\" ]]; then \
-          mkdir -p .repo/local_manifests && curl -o .repo/local_manifests/local_manifest.xml \"$LOCAL_MANIFEST_URL\"; \
-        else \
-          git clone \"$LOCAL_MANIFEST_URL\" --depth 1 -b \"$LOCAL_MANIFEST_BRANCH\" .repo/local_manifests; \
-        fi && \
-
-        # Sync the repositories
-        if [ -f /usr/bin/resync ]; then
-          /usr/bin/resync # For compatibility with Omansh's Docker image 
-        else
-          /opt/crave/resync.sh
-        fi && \
-
-        # Set up build environment
-        export BUILD_USERNAME=${{ github.actor }} ; \
-        export BUILD_HOSTNAME=crave ; \
-        source build/envsetup.sh && \
-
-        echo "Repository: ${{ github.repository }}"; \
-        echo "Run ID: ${{ github.run_id }}"; \
-
-        # Build the ROM
-        lunch \"$LUNCH_TARGET\" && \
-        make installclean && \
-        ${{ github.event.inputs.BUILD_COMMAND }}"
+        crave "${CRAVE_FLAGS_ARR[@]}" run --no-patch "${PAID_ARGS[@]}" "${CLEAN_ARGS[@]}" -- \
+          "REPO_INIT_URL=\"$REPO_INIT_URL\" REPO_INIT_BRANCH=\"$REPO_INIT_BRANCH\" \
+          LOCAL_MANIFEST_URL=\"$LOCAL_MANIFEST_URL\" LOCAL_MANIFEST_BRANCH=\"$LOCAL_MANIFEST_BRANCH\" \
+          LOCAL_MANIFEST_IS_XML=\"$LOCAL_MANIFEST_IS_XML\" LUNCH_TARGET=\"$LUNCH_TARGET\" \
+          BUILD_COMMAND=\"${{ github.event.inputs.BUILD_COMMAND }}\" \
+          GITHUB_REPOSITORY=\"${{ github.repository }}\" GITHUB_RUN_ID=\"${{ github.run_id }}\" \
+          BUILD_USERNAME=\"${{ github.actor }}\" BUILD_HOSTNAME=crave \
+          bash scripts/crave-build.sh"
 
       # Send Build 'status' notification (Success)
     - name: Telegram Build Succeeded
@@ -626,10 +601,6 @@ jobs:
       if: ${{ success() }}
       run: |
         cd "$PROJECTFOLDER"
-        echo "${{ secrets.GITHUB_TOKEN }}" > token.txt
-        crave push token.txt -d $(crave ssh -- pwd | grep -v Select | sed -s 's/\r//g')/
-        crave ssh -- "export GH_UPLOAD_LIMIT=\"${{ secrets.GH_UPLOAD_LIMIT }}\"; bash /opt/crave/github-actions/upload.sh '${{ github.run_id }}' '${{ github.event.inputs.DEVICE }}' '${{ github.repository }}' '${{ github.event.inputs.PRODUCT_NAME }}-${{ github.run_id }}' '${{ secrets.EXTRA_FILES }}'"
-        rm -f token.txt
 
         # Pull built files for GoFile/PixelDrain upload
         mkdir -p artifacts

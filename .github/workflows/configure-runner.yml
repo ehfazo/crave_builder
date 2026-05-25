@@ -28,17 +28,18 @@ jobs:
       # Download and configure 'crave'.
     - name: Configure the 'crave' environment
       run: |
+        set -euo pipefail
         if [[ $DCDEVSPACE == *1* ]]; then
         echo 'No need to set up crave, we are already running in devspace!'
         else
-          mkdir ${HOME}/bin/
+          mkdir "${HOME}/bin/"
           curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash -s --
-          mv ${PWD}/crave ${HOME}/bin/
-          sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
+          mv "${PWD}/crave" "${HOME}/bin/"
+          sudo ln -sf "/home/${USER}/bin/crave" /usr/bin/crave
           tmp_conf="${PWD}/crave.conf.tmp"
-          envsubst < ${PWD}/crave.conf.sample > "$tmp_conf"
-          mv "$tmp_conf" ${PWD}/crave.conf
-          rm -rf ${PWD}/crave.conf.sample          
+          envsubst < "${PWD}/crave.conf.sample" > "$tmp_conf"
+          mv "$tmp_conf" "${PWD}/crave.conf"
+          rm -rf "${PWD}/crave.conf.sample"
         fi
       env:
         CRAVE_USERNAME: ${{  secrets.CRAVE_USERNAME  }}
