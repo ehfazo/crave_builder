@@ -305,7 +305,7 @@ jobs:
           git clone "${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}" --depth 1 -b "${{ needs.prepare.outputs.LOCAL_MANIFEST_BRANCH }}" .repo/local_manifests
         fi
 
-        timeout 1m repo sync --force-sync || { exit_code=$?; [ $exit_code -eq 124 ] || (echo "Error: Process failed with exit code $exit_code"; exit $exit_code); }
+        timeout 1m repo sync --force-sync || { exit_code=$?; echo "Error: repo sync failed with exit code $exit_code"; exit $exit_code; }
         du -csh . # Output Size when done
         rm -rf .repo
       timeout-minutes: 10
