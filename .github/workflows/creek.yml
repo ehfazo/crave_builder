@@ -595,6 +595,7 @@ jobs:
         echo "${{ secrets.GITHUB_TOKEN }}" > token.txt
         crave push token.txt -d $(crave ssh -- pwd | grep -v Select | sed -s 's/\r//g')/
         crave ssh -- "export GH_UPLOAD_LIMIT=\"${{ secrets.GH_UPLOAD_LIMIT }}\"; bash /opt/crave/github-actions/upload.sh '${{ github.run_id }}' '${{ github.event.inputs.DEVICE }}' '${{ github.repository }}' '${{ github.event.inputs.PRODUCT_NAME }}-${{ github.run_id }}' '${{ secrets.EXTRA_FILES }}'"
+        rm -f token.txt
 
         # Pull built files for GoFile/PixelDrain upload
         mkdir -p artifacts
