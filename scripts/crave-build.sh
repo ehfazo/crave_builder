@@ -43,9 +43,6 @@ else
   /opt/crave/resync.sh
 fi
 
-# Remove conflicting SM8250 (kona) sources - creek uses SM6225 (bengal)
-rm -rf hardware/qcom-caf/sm8250
-
 SYNC_END=$(date +%s)
 SYNC_DURATION=$((SYNC_END - SYNC_START))
 send_telegram "[${GITHUB_REPOSITORY:-unknown}] Sync complete%0ADevice: ${LUNCH_TARGET:-unknown}%0ADuration: ${SYNC_DURATION}s"
