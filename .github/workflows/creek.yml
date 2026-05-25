@@ -337,7 +337,7 @@ jobs:
         echo "DCDEVSPACE status: ${DCDEVSPACE}"
         if [[ $DCDEVSPACE != *1* ]]; then
           
-          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash -s -- 
+          bash scripts/get_crave.sh 
 
           mkdir -p ${HOME}/bin/
           mv ${PWD}/crave ${HOME}/bin/ 
@@ -437,7 +437,7 @@ jobs:
         if [[ $DCDEVSPACE == *1* ]]; then
           echo 'No need to set up crave, we are already running in devspace!'
         else
-          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash -s --
+          bash scripts/get_crave.sh
           mv ${PWD}/crave ${HOME}/bin/
           sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
           envsubst < ${PWD}/crave.conf.sample >> ${PWD}/crave.conf
