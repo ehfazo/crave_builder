@@ -355,7 +355,7 @@ jobs:
           mkdir -p devspace
           sudo mkdir -p /crave-devspaces
           sudo ln -sf ${PWD}/devspace /crave-devspaces
-          sudo chmod 777 /crave-devspaces
+          sudo chown $USER:$USER /crave-devspaces && sudo chmod 755 /crave-devspaces
         else
           echo "We are already running in devspace... Skipping Symlinks"
         fi
