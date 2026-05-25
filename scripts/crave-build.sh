@@ -6,11 +6,11 @@ send_telegram() {
   if [[ -n "${TG_TOKEN:-}" && -n "${TG_CHAT:-}" ]]; then
     curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
       -d "chat_id=${TG_CHAT}" \
-      --data-urlencode "text=${message}" >/dev/null
+      -d "text=${message}" >/dev/null
   fi
 }
 
-send_telegram "[${GITHUB_REPOSITORY:-unknown}] Build init started%0ADevice: ${LUNCH_TARGET:-unknown}%0ARepo: ${REPO_INIT_URL:-unknown}"
+send_telegram "🚀 REMOTE BUILD STARTED%0A━━━━━━━━━━━━━━━━━━━━%0A📱 Device  : ${LUNCH_TARGET:-unknown}%0A📦 Repo    : ${REPO_INIT_URL:-unknown}"
 
 echo '>>>> [STEP] Clean'
 remove=(
@@ -43,7 +43,7 @@ else
 fi
 SYNC_END=$(date +%s)
 SYNC_DURATION=$((SYNC_END - SYNC_START))
-send_telegram "[${GITHUB_REPOSITORY:-unknown}] Sync complete%0ADevice: ${LUNCH_TARGET:-unknown}%0ADuration: ${SYNC_DURATION}s"
+send_telegram "📥 SYNC COMPLETE%0A━━━━━━━━━━━━━━━━━━━━%0A📱 Device  : ${LUNCH_TARGET:-unknown}%0A⏱ Duration : ${SYNC_DURATION}s"
 
 source build/envsetup.sh
 echo "Repository: ${GITHUB_REPOSITORY:-unknown}"
@@ -51,7 +51,7 @@ echo "Run ID: ${GITHUB_RUN_ID:-unknown}"
 lunch "$LUNCH_TARGET"
 make installclean
 
-send_telegram "[${GITHUB_REPOSITORY:-unknown}] Bacon starting%0ADevice: ${LUNCH_TARGET:-unknown}%0ACommand: ${BUILD_COMMAND:-unknown}"
+send_telegram "🔥 BACON STARTING%0A━━━━━━━━━━━━━━━━━━━━%0A📱 Device  : ${LUNCH_TARGET:-unknown}%0A⚙️ Command : ${BUILD_COMMAND:-unknown}"
 
 BUILD_START=$(date +%s)
 set +e
@@ -62,9 +62,9 @@ BUILD_END=$(date +%s)
 BUILD_DURATION=$((BUILD_END - BUILD_START))
 
 if [[ $BUILD_EXIT -eq 0 ]]; then
-  send_telegram "[${GITHUB_REPOSITORY:-unknown}] Bacon burned successfully!%0ADevice: ${LUNCH_TARGET:-unknown}%0ADuration: ${BUILD_DURATION}s"
+  send_telegram "✅ BACON BURNED SUCCESSFULLY%0A━━━━━━━━━━━━━━━━━━━━%0A📱 Device  : ${LUNCH_TARGET:-unknown}%0A⏱ Duration : ${BUILD_DURATION}s%0A🎉 Build completed!"
 else
-  send_telegram "[${GITHUB_REPOSITORY:-unknown}] Bacon burned - FAILED!%0ADevice: ${LUNCH_TARGET:-unknown}%0AExit code: ${BUILD_EXIT}%0ADuration: ${BUILD_DURATION}s"
+  send_telegram "❌ BACON BURN FAILED%0A━━━━━━━━━━━━━━━━━━━━%0A📱 Device   : ${LUNCH_TARGET:-unknown}%0A🚩 Exit Code : ${BUILD_EXIT}%0A⏱ Duration  : ${BUILD_DURATION}s"
 fi
 
 exit $BUILD_EXIT

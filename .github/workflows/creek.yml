@@ -304,12 +304,14 @@ jobs:
           echo "Telegram credentials not configured, skipping notification."
           exit 0
         fi
-        MESSAGE="[Action Triggered] Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
-        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="ROM: ${{ github.event.inputs.ROM_NAME }}%0A"
-        MESSAGE+="Lunch: ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}%0A"
-        MESSAGE+="Build Command: ${{ github.event.inputs.BUILD_COMMAND }}%0A"
-        MESSAGE+="Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        MESSAGE="🪄 BUILD INITIATED%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📋 Project  : ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="🎯 Target   : ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}%0A"
+        MESSAGE+="⚙️  Command  : ${{ github.event.inputs.BUILD_COMMAND }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
           -d "text=$MESSAGE" >/dev/null
@@ -475,11 +477,13 @@ jobs:
           echo "Telegram credentials not configured, skipping notification."
           exit 0
         fi
-        MESSAGE="Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
-        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="Build has been queued%0A"
-        MESSAGE+="Check Progress at:%0A"
-        MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        MESSAGE="⏳ BUILD QUEUED%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📋 Project  : ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="Waiting for a build slot...%0A"
+        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
           -d "text=$MESSAGE" >/dev/null
@@ -518,10 +522,12 @@ jobs:
           echo "Telegram credentials not configured, skipping notification."
           exit 0
         fi
-        MESSAGE="[Buildbot Init] Crave environment ready%0A"
-        MESSAGE+="Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
-        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        MESSAGE="🛠 ENVIRONMENT READY%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📋 Project  : ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
           -d "text=$MESSAGE" >/dev/null
@@ -594,10 +600,11 @@ jobs:
           echo "Telegram credentials not configured, skipping notification."
           exit 0
         fi
-        MESSAGE="Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
-        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="Build has Succeeded!%0A"
-        MESSAGE+="Download at:%0A"
+        MESSAGE="🎉 BUILD SUCCEEDED%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="💾 Download:%0A"
         MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
@@ -613,15 +620,17 @@ jobs:
           exit 0
         fi
         if [[ "${{ job.status }}" == "cancelled" ]]; then
-          JOB_MSG="has been Cancelled!"
+          JOB_EMOJI="❌"
+          JOB_STATUS="CANCELLED"
         else
-          JOB_MSG="has Failed!"
+          JOB_EMOJI="💥"
+          JOB_STATUS="FAILED"
         fi
-        MESSAGE="Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
-        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="Build $JOB_MSG%0A"
-        MESSAGE+="Check logs at:%0A"
-        MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        MESSAGE="$JOB_EMOJI BUILD $JOB_STATUS%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
           -d "text=$MESSAGE" >/dev/null
@@ -737,19 +746,23 @@ jobs:
         if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
           exit 0
         fi
-        MESSAGE="[Bacon Complete] Build for ${{ github.event.inputs.DEVICE }} succeeded%0A"
-        MESSAGE+="GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}%0A"
+        MESSAGE="📤 DOWNLOAD LINKS%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="💾 GitHub:%0A"
+        MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}%0A"
         if [[ -n "${{ env.GOFILE_URL }}" ]]; then
-          MESSAGE+="GoFile: ${{ env.GOFILE_URL }}%0A"
+          MESSAGE+="☁️ GoFile:%0A${{ env.GOFILE_URL }}%0A"
         fi
         if [[ -n "${{ env.PIXELDRAIN_URL }}" ]]; then
-          MESSAGE+="PixelDrain: ${{ env.PIXELDRAIN_URL }}%0A"
+          MESSAGE+="☁️ PixelDrain:%0A${{ env.PIXELDRAIN_URL }}%0A"
         fi
         if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
-          MESSAGE+="Build log (GoFile): ${{ env.GOFILE_BUILD_LOG }}%0A"
+          MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
         fi
         if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
-          MESSAGE+="Build log (PixelDrain): ${{ env.PIXELDRAIN_BUILD_LOG }}"
+          MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}"
         fi
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
@@ -818,19 +831,23 @@ jobs:
         if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
           exit 0
         fi
-        MESSAGE="[Bacon Failed] Build for ${{ github.event.inputs.DEVICE }} FAILED%0A"
-        MESSAGE+="Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
+        MESSAGE="📤 FAILURE DETAILS%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📋 Full Log:%0A"
+        MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
         if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
-          MESSAGE+="Build log (GoFile): ${{ env.GOFILE_BUILD_LOG }}%0A"
+          MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
         fi
         if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
-          MESSAGE+="Build log (PixelDrain): ${{ env.PIXELDRAIN_BUILD_LOG }}%0A"
+          MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}%0A"
         fi
         if [[ -n "${{ env.GOFILE_ERROR_URL }}" ]]; then
-          MESSAGE+="Error log (GoFile): ${{ env.GOFILE_ERROR_URL }}%0A"
+          MESSAGE+="⚠️ Error Log (GoFile):%0A${{ env.GOFILE_ERROR_URL }}%0A"
         fi
         if [[ -n "${{ env.PIXELDRAIN_ERROR_URL }}" ]]; then
-          MESSAGE+="Error log (PixelDrain): ${{ env.PIXELDRAIN_ERROR_URL }}"
+          MESSAGE+="⚠️ Error Log (PixelDrain):%0A${{ env.PIXELDRAIN_ERROR_URL }}"
         fi
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
