@@ -354,7 +354,7 @@ jobs:
           echo "Symlinking devspace folder"
           mkdir -p devspace
           sudo mkdir -p /crave-devspaces
-          sudo ln -sf ${pwd}/devspace /crave-devspaces
+          sudo ln -sf ${PWD}/devspace /crave-devspaces
           sudo chmod 777 /crave-devspaces
         else
           echo "We are already running in devspace... Skipping Symlinks"
