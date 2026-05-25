@@ -272,12 +272,10 @@ jobs:
 
         echo "Displaying Local Manifests"
         if [[ -z "${{ secrets.DISPLAY_FALSE }}" ]]; then
-          mkdir -p .repo/local_manifests || true
-          if [[ "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_IS_XML }}" == "true" ]]; then
-            curl -o .repo/local_manifests/local_manifest.xml "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_URL }}"
-          else
-            git clone "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_URL }}" --depth 1 -b "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_BRANCH }}" .repo/local_manifests
-          fi
+          bash scripts/fetch-local-manifest.sh \
+            "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_IS_XML }}" \
+            "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_URL }}" \
+            "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_BRANCH }}"
           cat .repo/local_manifests/*.xml
         else
           echo "Displaying is disabled through secrets."
@@ -336,12 +334,10 @@ jobs:
         cd tester 
         repo init -u "$REPO_INIT_URL" -b "$REPO_INIT_BRANCH" --depth=1
 
-        mkdir -p .repo/local_manifests || true
-        if [[ "${{ needs.prepare.outputs.LOCAL_MANIFEST_IS_XML }}" == "true" ]]; then
-          curl -o .repo/local_manifests/local_manifest.xml "${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}"
-        else
-          git clone "${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}" --depth 1 -b "${{ needs.prepare.outputs.LOCAL_MANIFEST_BRANCH }}" .repo/local_manifests
-        fi
+        bash scripts/fetch-local-manifest.sh \
+          "${{ needs.prepare.outputs.LOCAL_MANIFEST_IS_XML }}" \
+          "${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}" \
+          "${{ needs.prepare.outputs.LOCAL_MANIFEST_BRANCH }}"
 
         timeout 1m repo sync --force-sync || { exit_code=$?; echo "Error: repo sync failed with exit code $exit_code"; exit $exit_code; }
         du -csh . # Output Size when done
