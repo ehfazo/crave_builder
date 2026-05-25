@@ -297,11 +297,12 @@ jobs:
           echo "Displaying is disabled through secrets."
         fi
 
-    - name: Telegram Action Triggered
+    - name: Send initial Telegram notification
+      id: tg-init
       continue-on-error: true
       run: |
         if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
-          echo "Telegram credentials not configured, skipping notification."
+          echo "msg_id=" >> $GITHUB_OUTPUT
           exit 0
         fi
         MESSAGE="🪄 BUILD INITIATED%0A"
@@ -311,16 +312,20 @@ jobs:
         MESSAGE+="🎯 Target   : ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}%0A"
         MESSAGE+="⚙️  Command  : ${{ github.event.inputs.BUILD_COMMAND }}%0A"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="⏳ Waiting for build slot...%0A"
         MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+        RESP=$(curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" >/dev/null
+          -d "text=$MESSAGE")
+        MSG_ID=$(echo "$RESP" | jq -r '.result.message_id' 2>/dev/null || echo "")
+        echo "msg_id=$MSG_ID" >> $GITHUB_OUTPUT
 
     outputs:
       PROJECTFOLDER: ${{ steps.proj-variables.outputs.PROJECTFOLDER }}
       PROJECTID: ${{ steps.proj-variables.outputs.PROJECTID }}
       REPO_INIT_URL: ${{ steps.repo-init.outputs.REPO_INIT_URL }}
       REPO_INIT_BRANCH: ${{ steps.repo-init.outputs.REPO_INIT_BRANCH }}
+      msg_id: ${{ steps.tg-init.outputs.msg_id }}
       LUNCH_TARGET: ${{ steps.proj-variables.outputs.LUNCH_TARGET }}
       LUNCH: ${{ steps.proj-variables.outputs.LUNCH }}
       LOCAL_MANIFEST_URL: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_URL }}
@@ -398,7 +403,7 @@ jobs:
 
   build:
     name: Build using foss.crave.io
-    needs: test 
+    needs: [test, prepare]
       # Change this to self-hosted after setting up devspace as github actions runner
     runs-on: ubuntu-24.04
     concurrency:
@@ -474,25 +479,6 @@ jobs:
         git config --global user.name "${{ github.actor }}"
         git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
-      # Send Build 'start' notification
-    - name: Telegram Build Started
-      continue-on-error: true
-      run: |
-        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
-          echo "Telegram credentials not configured, skipping notification."
-          exit 0
-        fi
-        MESSAGE="⏳ BUILD QUEUED%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="📋 Project  : ${{ github.event.inputs.BASE_PROJECT }}%0A"
-        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="Waiting for a build slot...%0A"
-        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
-          -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" >/dev/null
-
       # Download and configure 'crave'.
     - name: Configure the 'crave' environment
       run: |
@@ -520,23 +506,6 @@ jobs:
         CRAVE_USERNAME: ${{  secrets.CRAVE_USERNAME  }}
         CRAVE_TOKEN: ${{  secrets.CRAVE_TOKEN  }}
 
-    - name: Telegram Buildbot Init
-      continue-on-error: true
-      run: |
-        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
-          echo "Telegram credentials not configured, skipping notification."
-          exit 0
-        fi
-        MESSAGE="🛠 ENVIRONMENT READY%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="📋 Project  : ${{ github.event.inputs.BASE_PROJECT }}%0A"
-        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
-          -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" >/dev/null
-
       # Initialize the previously chosen 'repo' project.
     - name: Set the 'crave' project
       if: ${{ github.event.inputs.SKIP_REPO_INIT != 'yes' }}
@@ -546,6 +515,30 @@ jobs:
 
         echo "Proceeding with build"
         echo "We will be building with $LUNCH"
+
+    - name: Update Telegram notification - build progress
+      continue-on-error: true
+      run: |
+        MSG_ID="${{ needs.prepare.outputs.msg_id }}"
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" || -z "$MSG_ID" ]]; then
+          exit 0
+        fi
+        MESSAGE="🪄 BUILD IN PROGRESS%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="📋 Project  : ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="🎯 Target   : ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}%0A"
+        MESSAGE+="⚙️  Command  : ${{ github.event.inputs.BUILD_COMMAND }}%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="⏳ Build queued ✓%0A"
+        MESSAGE+="🛠 Environment ready ✓%0A"
+        MESSAGE+="🔥 Building...%0A"
+        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/editMessageText" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "message_id=$MSG_ID" \
+          -d "text=$MESSAGE" >/dev/null
 
       # Create a 'crave' job for building.
     - name: Start compilation through 'crave'
@@ -593,52 +586,7 @@ jobs:
           BUILD_COMMAND=\"${{ github.event.inputs.BUILD_COMMAND }}\" \
           GITHUB_REPOSITORY=\"${{ github.repository }}\" GITHUB_RUN_ID=\"${{ github.run_id }}\" \
           BUILD_USERNAME=\"${{ github.actor }}\" BUILD_HOSTNAME=crave \
-          TG_TOKEN=\"${{ secrets.TG_TOKEN }}\" TG_CHAT=\"${{ secrets.TG_CHAT }}\" \
           bash scripts/crave-build.sh" 2>&1 | tee "$BUILD_LOG"
-
-      # Send Build 'status' notification (Success)
-    - name: Telegram Build Succeeded
-      if:  ${{ success() }}
-      continue-on-error: true
-      run: |
-        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
-          echo "Telegram credentials not configured, skipping notification."
-          exit 0
-        fi
-        MESSAGE="🎉 BUILD SUCCEEDED%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="💾 Download:%0A"
-        MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}"
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
-          -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" >/dev/null
-
-      # Send Build 'status' notification (Fail/Cancel)
-    - name: Telegram Build Failed
-      if:  ${{ cancelled() || failure() }}
-      continue-on-error: true
-      run: |
-        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
-          echo "Telegram credentials not configured, skipping notification."
-          exit 0
-        fi
-        if [[ "${{ job.status }}" == "cancelled" ]]; then
-          JOB_EMOJI="❌"
-          JOB_STATUS="CANCELLED"
-        else
-          JOB_EMOJI="💥"
-          JOB_STATUS="FAILED"
-        fi
-        MESSAGE="$JOB_EMOJI BUILD $JOB_STATUS%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="🔗 https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
-          -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" >/dev/null
 
       # Only reach this whether the user killed the workflow.
     - name: Execute if the job is cancelled
@@ -744,35 +692,6 @@ jobs:
           fi
         done
 
-    - name: Telegram Upload Links
-      if: ${{ success() }}
-      continue-on-error: true
-      run: |
-        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
-          exit 0
-        fi
-        MESSAGE="📤 DOWNLOAD LINKS%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="💾 GitHub:%0A"
-        MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}%0A"
-        if [[ -n "${{ env.GOFILE_URL }}" ]]; then
-          MESSAGE+="☁️ GoFile:%0A${{ env.GOFILE_URL }}%0A"
-        fi
-        if [[ -n "${{ env.PIXELDRAIN_URL }}" ]]; then
-          MESSAGE+="☁️ PixelDrain:%0A${{ env.PIXELDRAIN_URL }}%0A"
-        fi
-        if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
-          MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
-        fi
-        if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
-          MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}"
-        fi
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
-          -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" >/dev/null
-
       # Pull Errors and Display them
     - name: Display error.log
       if: ${{ failure() }}
@@ -829,31 +748,61 @@ jobs:
           echo "PixelDrain upload failed: $RESPONSE"
         fi
 
-    - name: Telegram Error Links
-      if: ${{ failure() }}
+    - name: Update Telegram notification - final result
+      if: ${{ always() }}
       continue-on-error: true
       run: |
-        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+        MSG_ID="${{ needs.prepare.outputs.msg_id }}"
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" || -z "$MSG_ID" ]]; then
           exit 0
         fi
-        MESSAGE="📤 FAILURE DETAILS%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
-        MESSAGE+="📋 Full Log:%0A"
-        MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
-        if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
-          MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
+        if [[ "${{ job.status }}" == "success" ]]; then
+          MESSAGE="✅ BUILD COMPLETE%0A"
+          MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+          MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+          MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+          MESSAGE+="💾 GitHub:%0A"
+          MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}%0A"
+          if [[ -n "${{ env.GOFILE_URL }}" ]]; then
+            MESSAGE+="☁️ GoFile:%0A${{ env.GOFILE_URL }}%0A"
+          fi
+          if [[ -n "${{ env.PIXELDRAIN_URL }}" ]]; then
+            MESSAGE+="☁️ PixelDrain:%0A${{ env.PIXELDRAIN_URL }}%0A"
+          fi
+          if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
+            MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
+          fi
+          if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
+            MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}"
+          fi
+        else
+          if [[ "${{ job.status }}" == "cancelled" ]]; then
+            JOB_EMOJI="❌"
+            JOB_STATUS="CANCELLED"
+          else
+            JOB_EMOJI="💥"
+            JOB_STATUS="FAILED"
+          fi
+          MESSAGE="$JOB_EMOJI BUILD $JOB_STATUS%0A"
+          MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+          MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
+          MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
+          MESSAGE+="📋 Full Log:%0A"
+          MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
+          if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
+            MESSAGE+="📋 Build Log (GoFile):%0A${{ env.GOFILE_BUILD_LOG }}%0A"
+          fi
+          if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
+            MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}%0A"
+          fi
+          if [[ -n "${{ env.GOFILE_ERROR_URL }}" ]]; then
+            MESSAGE+="⚠️ Error Log (GoFile):%0A${{ env.GOFILE_ERROR_URL }}%0A"
+          fi
+          if [[ -n "${{ env.PIXELDRAIN_ERROR_URL }}" ]]; then
+            MESSAGE+="⚠️ Error Log (PixelDrain):%0A${{ env.PIXELDRAIN_ERROR_URL }}"
+          fi
         fi
-        if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
-          MESSAGE+="📋 Build Log (PixelDrain):%0A${{ env.PIXELDRAIN_BUILD_LOG }}%0A"
-        fi
-        if [[ -n "${{ env.GOFILE_ERROR_URL }}" ]]; then
-          MESSAGE+="⚠️ Error Log (GoFile):%0A${{ env.GOFILE_ERROR_URL }}%0A"
-        fi
-        if [[ -n "${{ env.PIXELDRAIN_ERROR_URL }}" ]]; then
-          MESSAGE+="⚠️ Error Log (PixelDrain):%0A${{ env.PIXELDRAIN_ERROR_URL }}"
-        fi
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/editMessageText" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
+          -d "message_id=$MSG_ID" \
           -d "text=$MESSAGE" >/dev/null
