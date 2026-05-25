@@ -80,6 +80,14 @@ on:
         description: 'Command to be used for compiling:'
         required: true
         default: 'mka bacon'
+        type: choice
+        options:
+          - 'mka bacon'
+          - 'make bacon'
+          - 'mka otapackage'
+          - 'make otapackage'
+          - 'mka target-files-package'
+          - 'brunch'
       CLEAN_BUILD:
         description: 'Build with a clean workspace?'
         required: true
