@@ -112,7 +112,7 @@ jobs:
     - name: Export Repo Initialization Command
       id: repo-init
       run: |
-        echo "REPO_INIT= repo init -u ${{ github.event.inputs.REPO_INIT_URL }} -b ${{ github.event.inputs.REPO_INIT_BRANCH }} --depth=1" >> "$GITHUB_OUTPUT"
+        echo "REPO_INIT=repo init -u ${{ github.event.inputs.REPO_INIT_URL }} -b ${{ github.event.inputs.REPO_INIT_BRANCH }} --depth=1" >> "$GITHUB_OUTPUT"
         export REPO_INIT="repo init -u ${{ github.event.inputs.REPO_INIT_URL }} -b ${{ github.event.inputs.REPO_INIT_BRANCH }} --depth=1"
         echo "REPO_INIT=$REPO_INIT" >> "$GITHUB_ENV"
 
