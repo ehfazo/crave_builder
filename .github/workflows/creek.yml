@@ -209,13 +209,36 @@ jobs:
           export PROJECTID="35"
           export REPO_URL="https://android.googlesource.com/platform/manifest.git"
         ;;
+        *)
+          echo "Error: Unknown BASE_PROJECT '${{ github.event.inputs.BASE_PROJECT }}'"
+          exit 1
+        ;;
         esac
 
         echo "REPO_URL=$REPO_URL" >> "$GITHUB_OUTPUT"
 
-        LUNCH="lunch ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}"
+        LUNCH_TARGET="${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}"
 
+        for VAR in "ROM_NAME:${{ github.event.inputs.ROM_NAME }}" "DEVICE:${{ github.event.inputs.DEVICE }}" "RELEASE:${{ github.event.inputs.RELEASE }}" "PRODUCT_NAME:${{ github.event.inputs.PRODUCT_NAME }}"; do
+          NAME="${VAR%%:*}"
+          VALUE="${VAR#*:}"
+          case "$NAME" in
+            ROM_NAME|DEVICE|PRODUCT_NAME)
+              if [[ ! "$VALUE" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]; then
+                echo "Error: $NAME contains invalid characters (allowed: letters, digits, underscores, hyphens)"
+                exit 1
+              fi
+            ;;
+            RELEASE)
+              if [[ ! "$VALUE" =~ ^[-a-zA-Z0-9._]+$ ]]; then
+                echo "Error: $NAME contains invalid characters (allowed: letters, digits, dots, underscores, hyphens)"
+                exit 1
+              fi
+            ;;
+          esac
+        done
 
+        LUNCH="lunch $LUNCH_TARGET"
 
         LOCAL_MANIFEST_URL="${{ github.event.inputs.LOCAL_MANIFEST }}"
         echo "LOCAL_MANIFEST_URL=$LOCAL_MANIFEST_URL" >> "$GITHUB_OUTPUT"
@@ -229,6 +252,8 @@ jobs:
         echo "PROJECTID=$PROJECTID"  >> "$GITHUB_OUTPUT"
         echo "REPO_INIT_URL=${{ steps.repo-init.outputs.REPO_INIT_URL }}" >> "$GITHUB_OUTPUT"
         echo "REPO_INIT_BRANCH=${{ steps.repo-init.outputs.REPO_INIT_BRANCH }}" >> "$GITHUB_OUTPUT"
+        echo "LUNCH_TARGET=$LUNCH_TARGET" >> "$GITHUB_ENV"
+        echo "LUNCH_TARGET=$LUNCH_TARGET" >> "$GITHUB_OUTPUT"
         echo "LUNCH=$LUNCH" >> "$GITHUB_ENV"
         echo "LUNCH=$LUNCH" >> "$GITHUB_OUTPUT"
 
@@ -263,6 +288,7 @@ jobs:
       PROJECTID: ${{ steps.proj-variables.outputs.PROJECTID }}
       REPO_INIT_URL: ${{ steps.repo-init.outputs.REPO_INIT_URL }}
       REPO_INIT_BRANCH: ${{ steps.repo-init.outputs.REPO_INIT_BRANCH }}
+      LUNCH_TARGET: ${{ steps.proj-variables.outputs.LUNCH_TARGET }}
       LUNCH: ${{ steps.proj-variables.outputs.LUNCH }}
       LOCAL_MANIFEST_URL: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_URL }}
       LOCAL_MANIFEST_IS_XML: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_IS_XML }}
@@ -282,12 +308,14 @@ jobs:
         REPO_INIT_URL="${{ needs.prepare.outputs.REPO_INIT_URL }}"
         REPO_INIT_BRANCH="${{ needs.prepare.outputs.REPO_INIT_BRANCH }}"
         LUNCH="${{ needs.prepare.outputs.LUNCH }}"
+        LUNCH_TARGET="${{ needs.prepare.outputs.LUNCH_TARGET }}"
 
         echo "PROJECTFOLDER=$PROJECTFOLDER" >> "$GITHUB_ENV"
         echo "PROJECTID=$PROJECTID"  >> "$GITHUB_ENV"
         echo "REPO_INIT_URL=$REPO_INIT_URL" >> "$GITHUB_ENV"
         echo "REPO_INIT_BRANCH=$REPO_INIT_BRANCH" >> "$GITHUB_ENV"
         echo "LUNCH=$LUNCH" >> "$GITHUB_ENV"
+        echo "LUNCH_TARGET=$LUNCH_TARGET" >> "$GITHUB_ENV"
 
       # Download and configure 'repo'.
     - name: Configure the 'repo' environment
@@ -324,6 +352,7 @@ jobs:
       PROJECTID: ${{ needs.prepare.outputs.PROJECTID }}
       REPO_INIT_URL: ${{ needs.prepare.outputs.REPO_INIT_URL }}
       REPO_INIT_BRANCH: ${{ needs.prepare.outputs.REPO_INIT_BRANCH }}
+      LUNCH_TARGET: ${{ needs.prepare.outputs.LUNCH_TARGET }}
       LUNCH: ${{ needs.prepare.outputs.LUNCH }}
       REMOTE_URL: ${{ needs.prepare.outputs.REPO_URL }}
       LOCAL_MANIFEST_URL: ${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}
@@ -347,12 +376,14 @@ jobs:
         REPO_INIT_URL="${{ needs.test.outputs.REPO_INIT_URL }}"
         REPO_INIT_BRANCH="${{ needs.test.outputs.REPO_INIT_BRANCH }}"
         LUNCH="${{ needs.test.outputs.LUNCH }}"
+        LUNCH_TARGET="${{ needs.test.outputs.LUNCH_TARGET }}"
 
         echo "PROJECTFOLDER=$PROJECTFOLDER" >> "$GITHUB_ENV"
         echo "PROJECTID=$PROJECTID"  >> "$GITHUB_ENV"
         echo "REPO_INIT_URL=$REPO_INIT_URL" >> "$GITHUB_ENV"
         echo "REPO_INIT_BRANCH=$REPO_INIT_BRANCH" >> "$GITHUB_ENV"
         echo "LUNCH=$LUNCH" >> "$GITHUB_ENV"
+        echo "LUNCH_TARGET=$LUNCH_TARGET" >> "$GITHUB_ENV"
 
       # Create a project folder
     - name: Create Project Folders
@@ -524,7 +555,7 @@ jobs:
         echo "Run ID: ${{ github.run_id }}"; \
 
         # Build the ROM
-        $LUNCH && \
+        lunch \"$LUNCH_TARGET\" && \
         make installclean && \
         ${{ github.event.inputs.BUILD_COMMAND }}"
 
