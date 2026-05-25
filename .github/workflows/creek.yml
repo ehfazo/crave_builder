@@ -69,7 +69,7 @@ on:
 
       # OTHER VARIABLES
       REPO_INIT_URL:
-        description: "Command to initialize 'repo' project:"
+        description: "URL of the repo manifest repository (e.g., https://github.com/LineageOS/android.git)"
         required: true
         default: "https://github.com/LineageOS/android.git"
       REPO_INIT_BRANCH:
