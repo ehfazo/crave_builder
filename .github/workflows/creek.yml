@@ -44,10 +44,10 @@ on:
         required: true
         default: 'userdebug'
         type: choice
-        options: 
-        - 'eng'
-        - 'userdebug'
-        - 'user' 
+        options:
+          - 'eng'
+          - 'userdebug'
+          - 'user'
       BUILD_DIFFERENT_ROM:
         description: "Command to initialize a different 'repo' project:"
         required: false
@@ -81,9 +81,9 @@ on:
         required: true
         default: 'no'
         type: choice
-        options: 
-        - 'yes'
-        - 'no'
+        options:
+          - 'yes'
+          - 'no'
 
 jobs:
   prepare:
