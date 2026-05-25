@@ -109,6 +109,7 @@ jobs:
         if [[ -z "${{ secrets.PIXELDRAIN_TOKEN }}" ]]; then
           echo "PixelDrain Credential Not Configured! Uploads will be disabled..."
         fi
+        
     - name: Export Repo Initialization Command
       id: repo-init
       run: |
