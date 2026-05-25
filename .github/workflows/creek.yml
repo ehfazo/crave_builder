@@ -92,7 +92,7 @@ on:
 jobs:
   prepare:
     name: Prepare for Building
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Check-out to repository
       uses: actions/checkout@v4
@@ -246,7 +246,7 @@ jobs:
   test:
     name: Test Local Manifests
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # Accept Project Variables
     - name: Set Repo Project
@@ -306,7 +306,7 @@ jobs:
     name: Build using foss.crave.io
     needs: test 
       # Change this to self-hosted after setting up devspace as github actions runner
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency:
       group: ${{ github.repository_owner }}
     steps:
