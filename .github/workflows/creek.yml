@@ -263,7 +263,7 @@ jobs:
           # Create bin directory if it doesn't exist
           mkdir -p ~/bin
           # Download repo script
-          curl https://storage.googleapis.com/git-repo-downloads/repo >> ~/bin/repo
+          curl -Lf https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           # Make repo script executable
           chmod a+x ~/bin/repo
           # Create symbolic link to /usr/bin/repo
@@ -394,7 +394,7 @@ jobs:
           # Create bin directory if it doesn't exist
           mkdir -p ~/bin
           # Download repo script
-          curl https://storage.googleapis.com/git-repo-downloads/repo >> ~/bin/repo
+          curl -Lf https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           # Make repo script executable
           chmod a+x ~/bin/repo
           # Create symbolic link to /usr/bin/repo
