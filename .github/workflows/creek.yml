@@ -48,11 +48,15 @@ on:
           - 'eng'
           - 'userdebug'
           - 'user'
-      BUILD_DIFFERENT_ROM:
-        description: "Command to initialize a different 'repo' project:"
-        required: false
-        default: "echo 'Build Starting!'"
-     
+      SKIP_REPO_INIT:
+        description: 'Skip repo init (test only)?'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
+
       # LOCAL MANIFEST VARIABLES
       LOCAL_MANIFEST:
         description: "Personal local manifest [repository or raw]:"
@@ -285,16 +289,12 @@ jobs:
 
       # Test Your Personal 'Local Manifests' against The ROM
     - name: Test Local Manifests
-      if: ${{ github.event.inputs.BUILD_DIFFERENT_ROM != 'skip' }}
+      if: ${{ github.event.inputs.SKIP_REPO_INIT != 'yes' }}
       run: |
         rm -rf tester
         mkdir tester
         cd tester 
-        if [ "${{ github.event.inputs.BUILD_DIFFERENT_ROM }}" == "echo 'Build Starting!'" ]; then
-          $REPO_INIT
-        else
-          ${{ github.event.inputs.BUILD_DIFFERENT_ROM }}
-        fi 
+        $REPO_INIT
 
         mkdir -p .repo/local_manifests || true
         if [[ "${{ needs.prepare.outputs.LOCAL_MANIFEST_IS_XML }}" == "true" ]]; then
@@ -471,19 +471,12 @@ jobs:
         echo "Running $REPO_INIT"
         $REPO_INIT
 
-        if [ "${{ github.event.inputs.BUILD_DIFFERENT_ROM }}" == "echo 'Build Starting!'" ]; then
-          export BUILD_DIFFERENT_ROM="$REPO_INIT"
-          echo "Building $BUILD_DIFFERENT_ROM"
-        else
-          export BUILD_DIFFERENT_ROM="${{ github.event.inputs.BUILD_DIFFERENT_ROM }}"
-          echo "Building $BUILD_DIFFERENT_ROM"
-        fi
-        echo "BUILD_DIFFERENT_ROM=$BUILD_DIFFERENT_ROM" >> "$GITHUB_ENV"
+        echo "Building $REPO_INIT"
         echo "We will be building with $LUNCH"
 
       # Create a 'crave' job for building.
     - name: Start compilation through 'crave'
-      if: ${{ github.event.inputs.BUILD_DIFFERENT_ROM != 'skip' }}
+      if: ${{ github.event.inputs.SKIP_REPO_INIT != 'yes' }}
       run: |
         cd $PROJECTFOLDER
 
@@ -517,7 +510,7 @@ jobs:
           echo \"    Cleaned: \$folder\"
         done && \
         # Clone local_manifests repository
-        $BUILD_DIFFERENT_ROM ; \
+        $REPO_INIT ; \
         if [[ \"${{ needs.test.outputs.LOCAL_MANIFEST_IS_XML }}\" == \"true\" ]]; then \
           mkdir -p .repo/local_manifests && curl -o .repo/local_manifests/local_manifest.xml \"${{ needs.test.outputs.LOCAL_MANIFEST_URL }}\"; \
         else \
