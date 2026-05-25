@@ -335,7 +335,7 @@ jobs:
     - name: Check-out to repository
       uses: actions/checkout@v4
 
-      # Set-up a spearate directory for the device.
+      # Set-up a separate directory for the device.
     - name: Set-up workspace environment
       run: |
         mkdir ${{ github.event.inputs.DEVICE_NAME }}
@@ -415,7 +415,7 @@ jobs:
         CRAVE_USERNAME: ${{  secrets.CRAVE_USERNAME  }}
         CRAVE_TOKEN: ${{  secrets.CRAVE_TOKEN  }}
 
-      # Initialize the previously choosen 'repo' project.
+      # Initialize the previously chosen 'repo' project.
     - name: Set the 'crave' project
       run: |
         cd $PROJECTFOLDER

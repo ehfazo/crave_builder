@@ -36,7 +36,7 @@ on:
         required: true
         default: "creek"
       RELEASE:
-        description: ""
+        description: "Release channel/branch for the lunch target (e.g. trunk_staging, ap2a, android-14.0.0_r50)"
         required: true
         default: "trunk_staging"
       BUILD_TYPE:
@@ -361,8 +361,8 @@ jobs:
         else
           echo "We are already running in devspace... Skipping Symlinks"
         fi
-        if grep -q "$PROJECTFOLDER" <(crave clone list --json | jq -r '.clones[]."Cloned At"') || [[ "${DCDEVSPACE}" == "1" ]]; then
-          crave clone destroy -y $PROJECTFOLDER || echo "Error removing $PROJECTFOLDER"
+        if crave clone list --json | jq -e --arg f "$PROJECTFOLDER" '[.clones[] | tostring | test($f)] | any' >/dev/null || [[ "${DCDEVSPACE}" == "1" ]]; then
+          crave clone destroy -y "$PROJECTFOLDER" || echo "Error removing $PROJECTFOLDER"
         else          
         echo "Skipping removal"
         fi
@@ -376,13 +376,6 @@ jobs:
       # Check-out in order to access the repository's files.
     - name: Check-out to repository
       uses: actions/checkout@v4
-
-      # Set-up a spearate directory for the device.
-    - name: Set-up workspace environment
-      run: |
-        mkdir ${{ github.event.inputs.DEVICE }}
-        cd ${{ github.event.inputs.DEVICE }}
-      continue-on-error: true
 
       # Initialize git remote in the project folder (where repo init & build proceed)
     - name: Remote add
@@ -450,7 +443,7 @@ jobs:
         CRAVE_USERNAME: ${{  secrets.CRAVE_USERNAME  }}
         CRAVE_TOKEN: ${{  secrets.CRAVE_TOKEN  }}
 
-      # Initialize the previously choosen 'repo' project.
+      # Initialize the previously chosen 'repo' project.
     - name: Set the 'crave' project
       run: |
         cd $PROJECTFOLDER
@@ -566,7 +559,7 @@ jobs:
           -d "text=$MESSAGE" \
           -d "parse_mode=Markdown" >/dev/null
 
-      # Only reach this wheter the user killed the workflow.
+      # Only reach this whether the user killed the workflow.
     - name: Execute if the job is cancelled
       if: ${{ cancelled() }}
       run: |
@@ -592,10 +585,10 @@ jobs:
       if: ${{ success() }}
       continue-on-error: true
       run: |
+        mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
         for FILE in artifacts/*.zip artifacts/*.img; do
           [ -f "$FILE" ] || continue
           echo "Uploading $FILE to GoFile..."
-          mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
           for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
             RESP=$(curl -s -F "file=@${FILE}" "https://${S}.gofile.io/uploadFile")
             LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
