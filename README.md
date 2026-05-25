@@ -10,5 +10,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Credits
 - [Crave Team](https://crave.io) for their hard work and dedication in Open Source development.
 - [Open Source Community](https://github.com) for their continuous support and contributions to the project.
-- [SoundDrill31](https://github.com/sounddrill31) for sparking `crave_aosp_builder` and helping make this project happen.
-- [azwhikaru](https://github.com/azwhikaru) for their contributions to the project.
+- [SoundDrill31](https://github.com/sounddrill31) for sparking [crave_aosp_builder](https://github.com/sounddrill31/crave_aosp_builder) and helping make this project happen.
+- [azwhikaru](https://github.com/azwhikaru) for their contributions to [crave_aosp_builder](https://github.com/sounddrill31/crave_aosp_builder).
