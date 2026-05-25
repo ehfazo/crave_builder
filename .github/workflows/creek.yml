@@ -379,11 +379,10 @@ jobs:
       run: |
         cd $PROJECTFOLDER
         git init
-        if ! git remote get-url origin &>/dev/null; then
-            git remote remove origin 2>/dev/null || true
-            git remote add origin ${{ needs.test.outputs.REMOTE_URL }}
-        else
+        if git remote get-url origin &>/dev/null; then
             git remote set-url origin ${{ needs.test.outputs.REMOTE_URL }}
+        else
+            git remote add origin ${{ needs.test.outputs.REMOTE_URL }}
         fi
 
       # Download and configure 'repo'.
