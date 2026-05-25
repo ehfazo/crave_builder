@@ -297,6 +297,23 @@ jobs:
           echo "Displaying is disabled through secrets."
         fi
 
+    - name: Telegram Action Triggered
+      continue-on-error: true
+      run: |
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+          echo "Telegram credentials not configured, skipping notification."
+          exit 0
+        fi
+        MESSAGE="[Action Triggered] Crave Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="ROM: ${{ github.event.inputs.ROM_NAME }}%0A"
+        MESSAGE+="Lunch: ${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}%0A"
+        MESSAGE+="Build Command: ${{ github.event.inputs.BUILD_COMMAND }}%0A"
+        MESSAGE+="Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          --data-urlencode "text=$MESSAGE" >/dev/null
+
     outputs:
       PROJECTFOLDER: ${{ steps.proj-variables.outputs.PROJECTFOLDER }}
       PROJECTID: ${{ steps.proj-variables.outputs.PROJECTID }}
@@ -492,6 +509,21 @@ jobs:
         CRAVE_USERNAME: ${{  secrets.CRAVE_USERNAME  }}
         CRAVE_TOKEN: ${{  secrets.CRAVE_TOKEN  }}
 
+    - name: Telegram Buildbot Init
+      continue-on-error: true
+      run: |
+        if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
+          echo "Telegram credentials not configured, skipping notification."
+          exit 0
+        fi
+        MESSAGE="[Buildbot Init] Crave environment ready%0A"
+        MESSAGE+="Project: ${{ github.event.inputs.BASE_PROJECT }}%0A"
+        MESSAGE+="Device: ${{ github.event.inputs.DEVICE }}%0A"
+        MESSAGE+="Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TG_CHAT }}" \
+          --data-urlencode "text=$MESSAGE" >/dev/null
+
       # Initialize the previously chosen 'repo' project.
     - name: Set the 'crave' project
       if: ${{ github.event.inputs.SKIP_REPO_INIT != 'yes' }}
@@ -521,6 +553,8 @@ jobs:
         echo "Check foss.crave.io Dashboard to see builds"
         echo "Running build's log will show up here!"
 
+        set -o pipefail
+        BUILD_LOG="$GITHUB_WORKSPACE/build.log"
 
         CRAVE_FLAGS_RAW="${{ secrets.CRAVE_FLAGS }}"
         if [[ -n "$CRAVE_FLAGS_RAW" ]]; then
@@ -546,7 +580,8 @@ jobs:
           BUILD_COMMAND=\"${{ github.event.inputs.BUILD_COMMAND }}\" \
           GITHUB_REPOSITORY=\"${{ github.repository }}\" GITHUB_RUN_ID=\"${{ github.run_id }}\" \
           BUILD_USERNAME=\"${{ github.actor }}\" BUILD_HOSTNAME=crave \
-          bash scripts/crave-build.sh"
+          TG_TOKEN=\"${{ secrets.TG_TOKEN }}\" TG_CHAT=\"${{ secrets.TG_CHAT }}\" \
+          bash scripts/crave-build.sh" 2>&1 | tee "$BUILD_LOG"
 
       # Send Build 'status' notification (Success)
     - name: Telegram Build Succeeded
@@ -595,6 +630,51 @@ jobs:
       run: |
         cd "$PROJECTFOLDER"
         crave stop --all
+
+    - name: Upload build log to GoFile
+      if: ${{ always() }}
+      continue-on-error: true
+      run: |
+        LOG="$GITHUB_WORKSPACE/build.log"
+        if [ ! -f "$LOG" ]; then
+          echo "No build.log found"
+          exit 0
+        fi
+        echo "Uploading build.log to GoFile..."
+        mapfile -t SERVERS < <(curl -s https://api.gofile.io/servers | jq -r '.data.servers[].name')
+        for S in $(printf "%s\n" "${SERVERS[@]}" | shuf); do
+          RESP=$(curl -s -F "file=@$LOG" "https://${S}.gofile.io/uploadFile")
+          LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+          if [ -n "$LINK" ]; then
+            echo "GoFile build log: $LINK"
+            echo "GOFILE_BUILD_LOG=$LINK" >> $GITHUB_ENV
+            break
+          fi
+        done
+
+    - name: Upload build log to PixelDrain
+      if: ${{ always() }}
+      continue-on-error: true
+      run: |
+        LOG="$GITHUB_WORKSPACE/build.log"
+        if [[ -z "${{ secrets.PIXELDRAIN_TOKEN }}" ]]; then
+          echo "PixelDrain token not configured, skipping."
+          exit 0
+        fi
+        if [ ! -f "$LOG" ]; then
+          echo "No build.log found"
+          exit 0
+        fi
+        echo "Uploading build.log to PixelDrain..."
+        RESPONSE=$(curl -s -u ":${{ secrets.PIXELDRAIN_TOKEN }}" -F "file=@$LOG" https://pixeldrain.com/api/file)
+        FILE_ID=$(echo "$RESPONSE" | jq -r '.id')
+        if [[ "$FILE_ID" != "null" && -n "$FILE_ID" ]]; then
+          URL="https://pixeldrain.com/u/$FILE_ID"
+          echo "PixelDrain build log: $URL"
+          echo "PIXELDRAIN_BUILD_LOG=$URL" >> $GITHUB_ENV
+        else
+          echo "PixelDrain build log upload failed: $RESPONSE"
+        fi
 
       # Upload build artifacts to GitHub Releases + GoFile + PixelDrain
     - name: Upload build artifacts
@@ -655,13 +735,19 @@ jobs:
         if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
           exit 0
         fi
-        MESSAGE="Build artifacts for ${{ github.event.inputs.DEVICE }}:%0A"
+        MESSAGE="[Bacon Complete] Build for ${{ github.event.inputs.DEVICE }} succeeded%0A"
         MESSAGE+="GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}%0A"
         if [[ -n "${{ env.GOFILE_URL }}" ]]; then
           MESSAGE+="GoFile: ${{ env.GOFILE_URL }}%0A"
         fi
         if [[ -n "${{ env.PIXELDRAIN_URL }}" ]]; then
-          MESSAGE+="PixelDrain: ${{ env.PIXELDRAIN_URL }}"
+          MESSAGE+="PixelDrain: ${{ env.PIXELDRAIN_URL }}%0A"
+        fi
+        if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
+          MESSAGE+="Build log (GoFile): ${{ env.GOFILE_BUILD_LOG }}%0A"
+        fi
+        if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
+          MESSAGE+="Build log (PixelDrain): ${{ env.PIXELDRAIN_BUILD_LOG }}"
         fi
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
@@ -730,8 +816,14 @@ jobs:
         if [[ -z "${{ secrets.TG_TOKEN }}" || -z "${{ secrets.TG_CHAT }}" ]]; then
           exit 0
         fi
-        MESSAGE="Build for ${{ github.event.inputs.DEVICE }} FAILED%0A"
+        MESSAGE="[Bacon Failed] Build for ${{ github.event.inputs.DEVICE }} FAILED%0A"
         MESSAGE+="Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
+        if [[ -n "${{ env.GOFILE_BUILD_LOG }}" ]]; then
+          MESSAGE+="Build log (GoFile): ${{ env.GOFILE_BUILD_LOG }}%0A"
+        fi
+        if [[ -n "${{ env.PIXELDRAIN_BUILD_LOG }}" ]]; then
+          MESSAGE+="Build log (PixelDrain): ${{ env.PIXELDRAIN_BUILD_LOG }}%0A"
+        fi
         if [[ -n "${{ env.GOFILE_ERROR_URL }}" ]]; then
           MESSAGE+="Error log (GoFile): ${{ env.GOFILE_ERROR_URL }}%0A"
         fi
