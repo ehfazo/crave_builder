@@ -242,8 +242,20 @@ jobs:
 
         LOCAL_MANIFEST_URL="${{ github.event.inputs.LOCAL_MANIFEST }}"
         echo "LOCAL_MANIFEST_URL=$LOCAL_MANIFEST_URL" >> "$GITHUB_OUTPUT"
+        if [[ ! "$LOCAL_MANIFEST_URL" =~ ^https:// ]]; then
+          echo "Error: LOCAL_MANIFEST_URL must start with https://"
+          exit 1
+        fi
+        if [[ "$LOCAL_MANIFEST_URL" =~ [\&\;\$\`\(\)\{\}\|\\\"\'\<\>\ ] ]]; then
+          echo "Error: LOCAL_MANIFEST_URL contains shell metacharacters"
+          exit 1
+        fi
         if [[ "$LOCAL_MANIFEST_URL" =~ \.xml(/)?$ ]]; then
           echo "LOCAL_MANIFEST_IS_XML=true" >> "$GITHUB_OUTPUT"
+        fi
+        if [[ ! "${{ github.event.inputs.LOCAL_MANIFEST_BRANCH }}" =~ ^[-a-zA-Z0-9._/]+$ ]]; then
+          echo "Error: Invalid LOCAL_MANIFEST_BRANCH"
+          exit 1
         fi
         echo "LOCAL_MANIFEST_BRANCH=${{ github.event.inputs.LOCAL_MANIFEST_BRANCH }}" >> "$GITHUB_OUTPUT"
 
@@ -276,7 +288,11 @@ jobs:
             "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_IS_XML }}" \
             "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_URL }}" \
             "${{ steps.proj-variables.outputs.LOCAL_MANIFEST_BRANCH }}"
-          cat .repo/local_manifests/*.xml
+          if compgen -G ".repo/local_manifests/*.xml" > /dev/null; then
+            cat .repo/local_manifests/*.xml
+          else
+            echo "No local manifest XML files found to display."
+          fi
         else
           echo "Displaying is disabled through secrets."
         fi
@@ -300,20 +316,17 @@ jobs:
     steps:
       # Accept Project Variables
     - name: Set Repo Project
-      run: |
-        PROJECTFOLDER="${{ needs.prepare.outputs.PROJECTFOLDER }}"
-        PROJECTID="${{ needs.prepare.outputs.PROJECTID }}"
-        REPO_INIT_URL="${{ needs.prepare.outputs.REPO_INIT_URL }}"
-        REPO_INIT_BRANCH="${{ needs.prepare.outputs.REPO_INIT_BRANCH }}"
-        LUNCH="${{ needs.prepare.outputs.LUNCH }}"
-        LUNCH_TARGET="${{ needs.prepare.outputs.LUNCH_TARGET }}"
-
-        echo "PROJECTFOLDER=$PROJECTFOLDER" >> "$GITHUB_ENV"
-        echo "PROJECTID=$PROJECTID"  >> "$GITHUB_ENV"
-        echo "REPO_INIT_URL=$REPO_INIT_URL" >> "$GITHUB_ENV"
-        echo "REPO_INIT_BRANCH=$REPO_INIT_BRANCH" >> "$GITHUB_ENV"
-        echo "LUNCH=$LUNCH" >> "$GITHUB_ENV"
-        echo "LUNCH_TARGET=$LUNCH_TARGET" >> "$GITHUB_ENV"
+      uses: ./.github/actions/set-repo-project
+      with:
+        projectfolder: ${{ needs.prepare.outputs.PROJECTFOLDER }}
+        projectid: ${{ needs.prepare.outputs.PROJECTID }}
+        repo_init_url: ${{ needs.prepare.outputs.REPO_INIT_URL }}
+        repo_init_branch: ${{ needs.prepare.outputs.REPO_INIT_BRANCH }}
+        lunch: ${{ needs.prepare.outputs.LUNCH }}
+        lunch_target: ${{ needs.prepare.outputs.LUNCH_TARGET }}
+        local_manifest_url: ${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}
+        local_manifest_branch: ${{ needs.prepare.outputs.LOCAL_MANIFEST_BRANCH }}
+        local_manifest_is_xml: ${{ needs.prepare.outputs.LOCAL_MANIFEST_IS_XML }}
 
       # Download and configure 'repo'.
     - name: Configure the 'repo' environment
@@ -366,20 +379,17 @@ jobs:
     steps:
       # Accept Project Variables
     - name: Set Repo Project
-      run: |
-        PROJECTFOLDER="${{ needs.test.outputs.PROJECTFOLDER }}"
-        PROJECTID="${{ needs.test.outputs.PROJECTID }}"
-        REPO_INIT_URL="${{ needs.test.outputs.REPO_INIT_URL }}"
-        REPO_INIT_BRANCH="${{ needs.test.outputs.REPO_INIT_BRANCH }}"
-        LUNCH="${{ needs.test.outputs.LUNCH }}"
-        LUNCH_TARGET="${{ needs.test.outputs.LUNCH_TARGET }}"
-
-        echo "PROJECTFOLDER=$PROJECTFOLDER" >> "$GITHUB_ENV"
-        echo "PROJECTID=$PROJECTID"  >> "$GITHUB_ENV"
-        echo "REPO_INIT_URL=$REPO_INIT_URL" >> "$GITHUB_ENV"
-        echo "REPO_INIT_BRANCH=$REPO_INIT_BRANCH" >> "$GITHUB_ENV"
-        echo "LUNCH=$LUNCH" >> "$GITHUB_ENV"
-        echo "LUNCH_TARGET=$LUNCH_TARGET" >> "$GITHUB_ENV"
+      uses: ./.github/actions/set-repo-project
+      with:
+        projectfolder: ${{ needs.test.outputs.PROJECTFOLDER }}
+        projectid: ${{ needs.test.outputs.PROJECTID }}
+        repo_init_url: ${{ needs.test.outputs.REPO_INIT_URL }}
+        repo_init_branch: ${{ needs.test.outputs.REPO_INIT_BRANCH }}
+        lunch: ${{ needs.test.outputs.LUNCH }}
+        lunch_target: ${{ needs.test.outputs.LUNCH_TARGET }}
+        local_manifest_url: ${{ needs.test.outputs.LOCAL_MANIFEST_URL }}
+        local_manifest_branch: ${{ needs.test.outputs.LOCAL_MANIFEST_BRANCH }}
+        local_manifest_is_xml: ${{ needs.test.outputs.LOCAL_MANIFEST_IS_XML }}
 
       # Create a project folder
     - name: Create Project Folders
@@ -408,9 +418,9 @@ jobs:
         fi
 
         if [[ $DCDEVSPACE == *1* ]]; then
-          crave clone create --projectID $PROJECTID $PROJECTFOLDER || echo "Crave clone create failed!"
+          crave clone create --projectID "$PROJECTID" "$PROJECTFOLDER" || echo "Crave clone create failed!"
         else
-          mkdir $PROJECTFOLDER
+          mkdir "$PROJECTFOLDER"
         fi
 
       # Check-out in order to access the repository's files.
@@ -420,12 +430,12 @@ jobs:
       # Initialize git remote in the project folder (where repo init & build proceed)
     - name: Remote add
       run: |
-        cd $PROJECTFOLDER
+        cd "$PROJECTFOLDER"
         git init
         if git remote get-url origin &>/dev/null; then
-            git remote set-url origin ${{ needs.test.outputs.REMOTE_URL }}
+            git remote set-url origin "${{ needs.test.outputs.REMOTE_URL }}"
         else
-            git remote add origin ${{ needs.test.outputs.REMOTE_URL }}
+            git remote add origin "${{ needs.test.outputs.REMOTE_URL }}"
         fi
 
       # Download and configure 'repo'.
@@ -453,14 +463,13 @@ jobs:
         MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" \
-          -d "parse_mode=Markdown" >/dev/null
+          --data-urlencode "text=$MESSAGE" >/dev/null
 
       # Download and configure 'crave'.
     - name: Configure the 'crave' environment
       run: |
         echo "DCDEVSPACE status: ${DCDEVSPACE}"
-        mkdir -p $PROJECTFOLDER/.repo/manifests
+        mkdir -p "$PROJECTFOLDER/.repo/manifests"
         if [[ $DCDEVSPACE == *1* ]]; then
           echo 'No need to set up crave, we are already running in devspace!'
         else
@@ -469,14 +478,14 @@ jobs:
           sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
           envsubst < ${PWD}/crave.conf.sample >> ${PWD}/crave.conf
           rm -rf ${PWD}/crave.conf.sample
-          cp crave.conf $PROJECTFOLDER
+          cp crave.conf "$PROJECTFOLDER"
         fi
         if [[ -z "${{ secrets.CUSTOM_YAML }}" ]]; then
-          cp configs/crave/crave.yaml.aosp $PROJECTFOLDER/.repo/manifests/crave.yaml
+          cp configs/crave/crave.yaml.aosp "$PROJECTFOLDER/.repo/manifests/crave.yaml"
           echo "No Custom Configuration Found, Using Template!"
         else
-          touch $PROJECTFOLDER/.repo/manifests/crave.yaml || true
-          echo "${{ secrets.CUSTOM_YAML }}" > $PROJECTFOLDER/.repo/manifests/crave.yaml
+          touch "$PROJECTFOLDER/.repo/manifests/crave.yaml" || true
+          echo "${{ secrets.CUSTOM_YAML }}" > "$PROJECTFOLDER/.repo/manifests/crave.yaml"
           echo "Custom Configuration Found!"
         fi
       env:
@@ -497,7 +506,7 @@ jobs:
     - name: Start compilation through 'crave'
       if: ${{ github.event.inputs.SKIP_REPO_INIT != 'yes' }}
       run: |
-        cd $PROJECTFOLDER
+        cd "$PROJECTFOLDER"
 
         if [ "${{ github.event.inputs.CLEAN_BUILD }}" == "yes" ]; then
            export CLEAN="--clean"
@@ -513,7 +522,15 @@ jobs:
         echo "Running build's log will show up here!"
 
 
-        crave ${{ secrets.CRAVE_FLAGS }} run --no-patch ${PAID} ${CLEAN} -- "
+        PAID_ARGS=()
+        CLEAN_ARGS=()
+        if [[ -n "$PAID" ]]; then
+          PAID_ARGS=("$PAID")
+        fi
+        if [[ -n "$CLEAN" ]]; then
+          CLEAN_ARGS=("$CLEAN")
+        fi
+        crave ${{ secrets.CRAVE_FLAGS }} run --no-patch "${PAID_ARGS[@]}" "${CLEAN_ARGS[@]}" -- "
         echo '>>>> [STEP] Clean'
         remove=(
           .repo/local_manifests
@@ -530,10 +547,10 @@ jobs:
         done && \
         # Clone local_manifests repository
         repo init -u \"$REPO_INIT_URL\" -b \"$REPO_INIT_BRANCH\" --depth=1 ; \
-        if [[ \"${{ needs.test.outputs.LOCAL_MANIFEST_IS_XML }}\" == \"true\" ]]; then \
-          mkdir -p .repo/local_manifests && curl -o .repo/local_manifests/local_manifest.xml \"${{ needs.test.outputs.LOCAL_MANIFEST_URL }}\"; \
+        if [[ \"$LOCAL_MANIFEST_IS_XML\" == \"true\" ]]; then \
+          mkdir -p .repo/local_manifests && curl -o .repo/local_manifests/local_manifest.xml \"$LOCAL_MANIFEST_URL\"; \
         else \
-          git clone \"${{ needs.test.outputs.LOCAL_MANIFEST_URL }}\" --depth 1 -b \"${{ needs.test.outputs.LOCAL_MANIFEST_BRANCH }}\" .repo/local_manifests; \
+          git clone \"$LOCAL_MANIFEST_URL\" --depth 1 -b \"$LOCAL_MANIFEST_BRANCH\" .repo/local_manifests; \
         fi && \
 
         # Sync the repositories
@@ -572,8 +589,7 @@ jobs:
         MESSAGE+="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" \
-          -d "parse_mode=Markdown" >/dev/null
+          --data-urlencode "text=$MESSAGE" >/dev/null
 
       # Send Build 'status' notification (Fail/Cancel)
     - name: Telegram Build Failed
@@ -596,21 +612,20 @@ jobs:
         MESSAGE+="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" \
-          -d "parse_mode=Markdown" >/dev/null
+          --data-urlencode "text=$MESSAGE" >/dev/null
 
       # Only reach this whether the user killed the workflow.
     - name: Execute if the job is cancelled
       if: ${{ cancelled() }}
       run: |
-        cd $PROJECTFOLDER
+        cd "$PROJECTFOLDER"
         crave stop --all
 
       # Upload build artifacts to GitHub Releases + GoFile + PixelDrain
     - name: Upload build artifacts
       if: ${{ success() }}
       run: |
-        cd $PROJECTFOLDER
+        cd "$PROJECTFOLDER"
         echo "${{ secrets.GITHUB_TOKEN }}" > token.txt
         crave push token.txt -d $(crave ssh -- pwd | grep -v Select | sed -s 's/\r//g')/
         crave ssh -- "export GH_UPLOAD_LIMIT=\"${{ secrets.GH_UPLOAD_LIMIT }}\"; bash /opt/crave/github-actions/upload.sh '${{ github.run_id }}' '${{ github.event.inputs.DEVICE }}' '${{ github.repository }}' '${{ github.event.inputs.PRODUCT_NAME }}-${{ github.run_id }}' '${{ secrets.EXTRA_FILES }}'"
@@ -679,8 +694,7 @@ jobs:
         fi
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" \
-          -d "parse_mode=Markdown" >/dev/null
+          --data-urlencode "text=$MESSAGE" >/dev/null
 
       # Pull Errors and Display them
     - name: Display error.log
@@ -755,5 +769,4 @@ jobs:
         fi
         curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
           -d "chat_id=${{ secrets.TG_CHAT }}" \
-          -d "text=$MESSAGE" \
-          -d "parse_mode=Markdown" >/dev/null
+          --data-urlencode "text=$MESSAGE" >/dev/null
