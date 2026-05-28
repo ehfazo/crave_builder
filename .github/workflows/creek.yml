@@ -406,7 +406,7 @@ jobs:
     name: Build using foss.crave.io
     needs: [test, prepare]
       # Change this to self-hosted after setting up devspace as github actions runner
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     concurrency:
       group: ${{ github.workflow }}-${{ github.repository }}
     steps:
