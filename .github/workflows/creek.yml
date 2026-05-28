@@ -305,7 +305,7 @@ jobs:
           echo "msg_id=" >> $GITHUB_OUTPUT
           exit 0
         fi
-        MESSAGE="🪄 BUILD INITIATED%0A"
+        MESSAGE="🪄 WAITING FOR QUEUE%0A"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━%0A"
         MESSAGE+="📋 Project  : ${{ github.event.inputs.BASE_PROJECT }}%0A"
         MESSAGE+="📱 Device   : ${{ github.event.inputs.DEVICE }}%0A"
