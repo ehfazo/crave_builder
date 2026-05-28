@@ -345,7 +345,7 @@ jobs:
       LOCAL_MANIFEST_IS_XML: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_IS_XML }}
       LOCAL_MANIFEST_BRANCH: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_BRANCH }}
       REPO_URL: ${{ steps.proj-variables.outputs.REPO_URL }}
-      REPO_URL_BRANCH: ${{ steps.proj-variables.outputs.REPO_URL_BRANCH }}
+      REMOTE_BRANCH: ${{ steps.proj-variables.outputs.REPO_URL_BRANCH }}
 
   test:
     name: Test Local Manifests
@@ -410,7 +410,7 @@ jobs:
       LUNCH_TARGET: ${{ needs.prepare.outputs.LUNCH_TARGET }}
       LUNCH: ${{ needs.prepare.outputs.LUNCH }}
       REMOTE_URL: ${{ needs.prepare.outputs.REPO_URL }}
-      REMOTE_BRANCH: ${{ needs.prepare.outputs.REPO_URL_BRANCH }}
+      REMOTE_BRANCH: ${{ needs.prepare.outputs.REMOTE_BRANCH }}
       LOCAL_MANIFEST_URL: ${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}
       LOCAL_MANIFEST_IS_XML: ${{ needs.prepare.outputs.LOCAL_MANIFEST_IS_XML }}
       LOCAL_MANIFEST_BRANCH: ${{ needs.prepare.outputs.LOCAL_MANIFEST_BRANCH }}
