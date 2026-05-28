@@ -667,8 +667,8 @@ jobs:
 
         # Pull built files for GoFile/PixelDrain upload
         mkdir -p artifacts
-        crave pull "out/target/product/${{ github.event.inputs.DEVICE }}/*.zip" artifacts/ || true
-        crave pull "out/target/product/${{ github.event.inputs.DEVICE }}/*.img" artifacts/ || true
+        crave --projectID "$PROJECTID" pull "out/target/product/${{ github.event.inputs.DEVICE }}/*.zip" artifacts/ || true
+        crave --projectID "$PROJECTID" pull "out/target/product/${{ github.event.inputs.DEVICE }}/*.img" artifacts/ || true
 
     - name: Upload to GoFile (success)
       if: ${{ success() }}
@@ -717,8 +717,8 @@ jobs:
       id: errorlog
       run: |
         cd "$PROJECTFOLDER"
-        crave ssh -- sleep 1
-        crave pull "out/error.log" "$GITHUB_WORKSPACE/error.log" || true
+        crave --projectID "$PROJECTID" ssh -- sleep 1
+        crave --projectID "$PROJECTID" pull "out/error.log" "$GITHUB_WORKSPACE/error.log" || true
         echo "Displaying error.log"
         cat "$GITHUB_WORKSPACE/error.log" 2>/dev/null || echo "(error.log not found)"
 
