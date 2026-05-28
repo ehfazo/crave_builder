@@ -598,7 +598,7 @@ jobs:
         if [[ -n "$CLEAN" ]]; then
           CLEAN_ARGS=("$CLEAN")
         fi
-        crave "${CRAVE_FLAGS_ARR[@]}" run --no-patch "${PAID_ARGS[@]}" "${CLEAN_ARGS[@]}" -- \
+        crave "${CRAVE_FLAGS_ARR[@]}" run --projectID "$PROJECTID" --no-patch "${PAID_ARGS[@]}" "${CLEAN_ARGS[@]}" -- \
           "REPO_INIT_URL=\"$REPO_INIT_URL\" REPO_INIT_BRANCH=\"$REPO_INIT_BRANCH\" \
           LOCAL_MANIFEST_URL=\"$LOCAL_MANIFEST_URL\" LOCAL_MANIFEST_BRANCH=\"$LOCAL_MANIFEST_BRANCH\" \
           LOCAL_MANIFEST_IS_XML=\"$LOCAL_MANIFEST_IS_XML\" LUNCH_TARGET=\"$LUNCH_TARGET\" \
