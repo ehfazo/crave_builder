@@ -347,7 +347,6 @@ jobs:
       LOCAL_MANIFEST_IS_XML: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_IS_XML }}
       LOCAL_MANIFEST_BRANCH: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_BRANCH }}
       REPO_URL: ${{ steps.proj-variables.outputs.REPO_URL }}
-      REMOTE_BRANCH: ${{ steps.proj-variables.outputs.REPO_URL_BRANCH }}
 
   test:
     name: Test Local Manifests
