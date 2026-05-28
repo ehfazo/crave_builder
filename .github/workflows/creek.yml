@@ -152,62 +152,74 @@ jobs:
           export PROJECTFOLDER="/crave-devspaces/Arrow13"
           export PROJECTID="73"
           export REPO_URL="https://github.com/ArrowOS/android_manifest.git"
+          export REPO_URL_BRANCH="arrow-13.1"
 
         ;;
         "DerpFest 14.0")
           export PROJECTFOLDER="/crave-devspaces/DerpFest14"
           export PROJECTID="64"
           export REPO_URL="https://github.com/DerpFest-AOSP/manifest.git"
+          export REPO_URL_BRANCH="14"
         ;;
         "LineageOS 21.0")
           export PROJECTFOLDER="/crave-devspaces/Lineage21"
           export PROJECTID="72"
           export REPO_URL="https://github.com/LineageOS/android.git"
+          export REPO_URL_BRANCH="lineage-21.0"
         ;;
         "LineageOS 22.1")
           export PROJECTFOLDER="/crave-devspaces/Lineage22"
           export PROJECTID="93"
           export REPO_URL="https://github.com/accupara/los22.git"
+          export REPO_URL_BRANCH="lineage-22.1"
         ;;
         "LineageOS 20.0")
           export PROJECTFOLDER="/crave-devspaces/Lineage20"
           export PROJECTID="36"
           export REPO_URL="https://github.com/accupara/los20.git"
+          export REPO_URL_BRANCH="lineage-20.0"
         ;;
         "CipherOS 14")
           export PROJECTFOLDER="/crave-devspaces/Cipher14"
           export PROJECTID="79"
           export REPO_URL="https://github.com/CipherOS/android_manifest.git"
+          export REPO_URL_BRANCH="fourteen"
         ;;
         "PixelOS 15")
           export PROJECTFOLDER="/crave-devspaces/Pixel15"
           export PROJECTID="82"
           export REPO_URL="https://github.com/PixelOS-AOSP/manifest.git"
+          export REPO_URL_BRANCH="fifteen"
         ;;
         "RisingOS 15 Revived")
           export PROJECTFOLDER="/crave-devspaces/Rising15"
           export PROJECTID="86"
           export REPO_URL="https://github.com/RisingOS-Revived/android.git"
+          export REPO_URL_BRANCH="fifteen"
         ;;
         "LineageOS 18.1")
           export PROJECTFOLDER="/crave-devspaces/Lineage18"
           export PROJECTID="85"
           export REPO_URL="https://github.com/accupara/los18.1.git"
+          export REPO_URL_BRANCH="lineage-18.1"
         ;;
         "LineageOS 16.0")
           export PROJECTFOLDER="/crave-devspaces/Lineage16"
           export PROJECTID="81"
           export REPO_URL="https://github.com/accupara/los16.git"
+          export REPO_URL_BRANCH="lineage-16.0"
         ;;
         "CyanogenMOD 14.1")
           export PROJECTFOLDER="/crave-devspaces/Cyanogen14"
           export PROJECTID="83"
           export REPO_URL="https://github.com/accupara/los-cm14.1.git"
+          export REPO_URL_BRANCH="cm-14.1"
         ;;
         "AOSP")
           export PROJECTFOLDER="/crave-devspaces/AOSP"
           export PROJECTID="35"
           export REPO_URL="https://android.googlesource.com/platform/manifest.git"
+          export REPO_URL_BRANCH="master"
         ;;
         *)
           echo "Error: Unknown BASE_PROJECT '${{ github.event.inputs.BASE_PROJECT }}'"
@@ -333,6 +345,7 @@ jobs:
       LOCAL_MANIFEST_IS_XML: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_IS_XML }}
       LOCAL_MANIFEST_BRANCH: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_BRANCH }}
       REPO_URL: ${{ steps.proj-variables.outputs.REPO_URL }}
+      REPO_URL_BRANCH: ${{ steps.proj-variables.outputs.REPO_URL_BRANCH }}
 
   test:
     name: Test Local Manifests
@@ -397,6 +410,7 @@ jobs:
       LUNCH_TARGET: ${{ needs.prepare.outputs.LUNCH_TARGET }}
       LUNCH: ${{ needs.prepare.outputs.LUNCH }}
       REMOTE_URL: ${{ needs.prepare.outputs.REPO_URL }}
+      REMOTE_BRANCH: ${{ needs.prepare.outputs.REPO_URL_BRANCH }}
       LOCAL_MANIFEST_URL: ${{ needs.prepare.outputs.LOCAL_MANIFEST_URL }}
       LOCAL_MANIFEST_IS_XML: ${{ needs.prepare.outputs.LOCAL_MANIFEST_IS_XML }}
       LOCAL_MANIFEST_BRANCH: ${{ needs.prepare.outputs.LOCAL_MANIFEST_BRANCH }}
@@ -466,8 +480,10 @@ jobs:
         git init
         if git remote get-url origin &>/dev/null; then
             git remote set-url origin "${{ needs.test.outputs.REMOTE_URL }}"
+            git checkout -b "${{ needs.test.outputs.REMOTE_BRANCH}}"
         else
             git remote add origin "${{ needs.test.outputs.REMOTE_URL }}"
+            git checkout -b "${{ needs.test.outputs.REMOTE_BRANCH}}"
         fi
 
       # Download and configure 'repo'.
