@@ -228,6 +228,7 @@ jobs:
         esac
 
         echo "REPO_URL=$REPO_URL" >> "$GITHUB_OUTPUT"
+        echo "REPO_URL_BRANCH=$REPO_URL_BRANCH" >> "$GITHUB_OUTPUT"
 
         LUNCH_TARGET="${{ github.event.inputs.ROM_NAME }}_${{ github.event.inputs.DEVICE }}-${{ github.event.inputs.RELEASE }}-${{ github.event.inputs.BUILD_TYPE }}"
 
@@ -339,6 +340,7 @@ jobs:
       REPO_INIT_URL: ${{ steps.repo-init.outputs.REPO_INIT_URL }}
       REPO_INIT_BRANCH: ${{ steps.repo-init.outputs.REPO_INIT_BRANCH }}
       msg_id: ${{ steps.tg-init.outputs.msg_id }}
+      REMOTE_BRANCH: ${{ steps.proj-variables.outputs.REPO_URL_BRANCH }}
       LUNCH_TARGET: ${{ steps.proj-variables.outputs.LUNCH_TARGET }}
       LUNCH: ${{ steps.proj-variables.outputs.LUNCH }}
       LOCAL_MANIFEST_URL: ${{ steps.proj-variables.outputs.LOCAL_MANIFEST_URL }}
